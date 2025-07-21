@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+enum SubscriptionTier {
+  free
+  starter
+  pro
+  studio
+}
+
+enum ProcessingStatus {
+  pending
+  analyzing_chat
+  generating_clips
+  processing_video
+  completed
+  failed
+}
+
+enum JobType {
+  chat_analysis
+  clip_generation
+  format_conversion
+}
+
+enum JobStatus {
+  pending
+  running
+  completed
+  failed
+  cancelled
+}
+
+model User {
+  id               String           @id @default(cuid())
+  clerkId          String           @unique
+  twitchId         String?          @unique
+  twitchUsername   String?
+  email            String
+  subscriptionTier SubscriptionTier @default(free)
+  creditsRemaining Int              @default(0)
+  processingQuota  Int              @default(20)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  vods           VOD[]
+  clips          Clip[]
+  processingJobs ProcessingJob[]
+  analytics      UserAnalytics[]
+}
+
+model VOD {
+  id               String           @id @default(cuid())
+  userId           String
+  twitchVodId      String           @unique
+  title            String
+  duration         Int
+  viewCount        Int?
+  gameCategory     String?
+  createdDate      DateTime
+  chatAnalysis     Json?
+  processingStatus ProcessingStatus @default(pending)
+  processingProgress Int            @default(0)
+  thumbnailUrl     String?
+  vodUrl           String?
+  qualityLevels    String[]
+  fileSizeMb       Int?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clips          Clip[]
+  processingJobs ProcessingJob[]
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model Clip {
+  id               String   @id @default(cuid())
+  vodId            String
+  userId           String
+  title            String
+  startTime        Int
+  endTime          Int
+  duration         Int
+  confidenceScore  Float
+  highlightReason  String?
+  keywords         String[]
+  clipUrl          String?
+  thumbnailUrl     String?
+  socialFormats    Json?
+  downloadCount    Int      @default(0)
+  shareCount       Int      @default(0)
+  engagementData   Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  vod  VOD  @relation(fields: [vodId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vodId])
+  @@index([confidenceScore(sort: Desc)])
+}
+
+model ProcessingJob {
+  id               String    @id @default(cuid())
+  userId           String
+  vodId            String?
+  jobType          JobType
+  status           JobStatus @default(pending)
+  progress         Int       @default(0)
+  workerId         String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  errorMessage     String?
+  retryCount       Int       @default(0)
+  processingTimeMs Int?
+  memoryUsedMb     Int?
+  costCents        Int?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vod  VOD? @relation(fields: [vodId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model UserAnalytics {
+  id                    String   @id @default(cuid())
+  userId                String
+  date                  DateTime @db.Date
+  clipsGenerated        Int      @default(0)
+  processingTimeSeconds Int      @default(0)
+  storageUsedMb         Int      @default(0)
+  avgConfidenceScore    Float?
+  topHighlightReasons   String[]
+  popularKeywords       String[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date(sort: Desc)])
+}

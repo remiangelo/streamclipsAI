@@ -1,103 +1,112 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { SignInButton, SignUpButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import { Sparkles, Clock, TrendingUp, Zap } from "lucide-react";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/95">
+      <header className="container mx-auto px-4 py-6 flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <Sparkles className="h-8 w-8 text-primary" />
+          <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            StreamClips AI
+          </span>
         </div>
+        <nav className="flex items-center space-x-4">
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button variant="ghost">Sign In</Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button>Get Started</Button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <Link href="/dashboard">
+              <Button>Dashboard</Button>
+            </Link>
+          </SignedIn>
+        </nav>
+      </header>
+
+      <main className="container mx-auto px-4 py-16">
+        <section className="text-center max-w-4xl mx-auto mb-20">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+            Turn Your Best Moments Into Viral Clips
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8">
+            AI-powered highlight detection analyzes your Twitch chat to find the most engaging moments. 
+            Create viral-ready clips in seconds, not hours.
+          </p>
+          <div className="flex justify-center space-x-4">
+            <SignedOut>
+              <SignUpButton mode="modal">
+                <Button size="lg" className="text-lg px-8">
+                  Start Free Trial
+                </Button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <Link href="/dashboard">
+                <Button size="lg" className="text-lg px-8">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            </SignedIn>
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              Watch Demo
+            </Button>
+          </div>
+        </section>
+
+        <section className="grid md:grid-cols-3 gap-8 mb-20">
+          <Card className="p-6 hover:shadow-lg transition-shadow border-primary/20">
+            <div className="rounded-full bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
+              <Zap className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">AI Chat Analysis</h3>
+            <p className="text-muted-foreground">
+              Our AI analyzes chat spikes, emotes, and sentiment to identify your best moments automatically.
+            </p>
+          </Card>
+          <Card className="p-6 hover:shadow-lg transition-shadow border-accent/20">
+            <div className="rounded-full bg-accent/10 w-12 h-12 flex items-center justify-center mb-4">
+              <Clock className="h-6 w-6 text-accent" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Save Hours Weekly</h3>
+            <p className="text-muted-foreground">
+              Stop manually scrubbing through VODs. Get your highlights in minutes, not hours.
+            </p>
+          </Card>
+          <Card className="p-6 hover:shadow-lg transition-shadow border-primary/20">
+            <div className="rounded-full bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
+              <TrendingUp className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Optimized for Viral</h3>
+            <p className="text-muted-foreground">
+              Auto-format for TikTok, YouTube Shorts, and Instagram Reels with one click.
+            </p>
+          </Card>
+        </section>
+
+        <section className="text-center max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold mb-4">Join 1,000+ Streamers Already Saving Time</h2>
+          <p className="text-muted-foreground mb-8">
+            From affiliate streamers to partners, creators trust StreamClips AI to find their best content.
+          </p>
+          <div className="flex justify-center">
+            <SignedOut>
+              <SignUpButton mode="modal">
+                <Button size="lg" variant="secondary" className="text-lg px-8">
+                  Try 5 Free Clips
+                </Button>
+              </SignUpButton>
+            </SignedOut>
+          </div>
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
