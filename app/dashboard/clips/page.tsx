@@ -82,9 +82,9 @@ export default function ClipsPage() {
           {filteredClips.map((clip) => (
             <Card key={clip.id} className="overflow-hidden hover:shadow-lg transition-shadow">
               <div className="relative aspect-video bg-muted">
-                {clip.thumbnailUrl || clip.vod.thumbnailUrl ? (
+                {(clip.thumbnailUrl || clip.vod.thumbnailUrl) ? (
                   <img 
-                    src={clip.thumbnailUrl || clip.vod.thumbnailUrl} 
+                    src={(clip.thumbnailUrl || clip.vod.thumbnailUrl) as string} 
                     alt={clip.title}
                     className="w-full h-full object-cover"
                   />

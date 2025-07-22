@@ -1,18 +1,17 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import { type CreateNextContextOptions } from '@trpc/server/adapters/next'
+import { type FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import superjson from 'superjson'
 import { ZodError } from 'zod'
 
-export const createTRPCContext = async (opts: CreateNextContextOptions) => {
-  const { req } = opts
+export const createTRPCContext = async (opts: FetchCreateContextFnOptions | CreateNextContextOptions) => {
   const sesh = await auth()
 
   return {
     db,
     auth: sesh,
-    req,
   }
 }
 

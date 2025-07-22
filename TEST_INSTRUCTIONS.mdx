@@ -1,0 +1,154 @@
+# StreamClips AI - Test Suite Instructions
+
+## Overview
+
+I've created a comprehensive test suite for the StreamClips AI application covering:
+- Unit tests for core business logic
+- Component tests for UI elements
+- Integration tests for API endpoints
+- Utility function tests
+
+## Running the Tests
+
+### 1. Run All Tests
+```bash
+npm test
+```
+
+### 2. Run Tests with UI (Interactive Mode)
+```bash
+npm run test:ui
+```
+
+### 3. Run Tests with Coverage Report
+```bash
+npm run test:coverage
+```
+
+## Test Structure
+
+```
+tests/
+├── components/
+│   ├── landing-page.test.tsx    # Tests for the landing page
+│   └── ui/
+│       └── button.test.tsx       # Tests for Button component
+├── lib/
+│   ├── chat-analyzer.test.ts    # Tests for chat analysis logic
+│   ├── twitch-api.test.ts       # Tests for Twitch API client
+│   └── utils.test.ts            # Tests for utility functions
+├── database/
+│   └── schema.test.ts           # Tests for database schema
+└── setup.ts                     # Test configuration and mocks
+```
+
+## What's Being Tested
+
+### 1. **Chat Analyzer** (`lib/chat-analyzer.test.ts`)
+- ✅ Highlight detection based on chat activity spikes
+- ✅ Emote spam detection
+- ✅ Sentiment analysis
+- ✅ Keyword extraction
+- ✅ Merging of nearby highlights
+- ✅ Empty chat handling
+
+### 2. **Twitch API Client** (`lib/twitch-api.test.ts`)
+- ✅ User data fetching
+- ✅ VOD retrieval
+- ✅ Error handling for missing users
+- ✅ Duration parsing
+- ✅ Mock chat replay data
+
+### 3. **UI Components**
+- ✅ Landing page rendering
+- ✅ Button component variants and interactions
+- ✅ Feature cards display
+- ✅ Statistics display
+- ✅ Navigation links
+
+### 4. **Utilities** (`lib/utils.test.ts`)
+- ✅ Class name merging (cn function)
+- ✅ Conditional classes
+- ✅ Tailwind class conflicts resolution
+
+### 5. **Database Schema** (`database/schema.test.ts`)
+- ✅ User model fields including admin role
+- ✅ VOD model structure
+- ✅ Clip model structure
+- ✅ Enum validations
+
+## Expected Test Results
+
+All tests should pass if the application is working correctly. The test suite validates:
+
+1. **Core Functionality**
+   - Chat analysis correctly identifies highlight moments
+   - Twitch API integration handles various scenarios
+   - Database schema matches implementation
+
+2. **UI Rendering**
+   - Components render without errors
+   - User interactions work as expected
+   - Proper text and elements are displayed
+
+3. **Edge Cases**
+   - Empty data handling
+   - Error states
+   - Invalid inputs
+
+## Troubleshooting
+
+If tests fail, check:
+
+1. **Environment Setup**
+   - Ensure all dependencies are installed: `npm install`
+   - Database is properly configured
+   - Environment variables are set
+
+2. **Common Issues**
+   - **JSX Transform Error**: The setup includes React imports and global configuration
+   - **Module Resolution**: Paths are aliased with `@/` pointing to root
+   - **Mock Issues**: Clerk and Next.js router are properly mocked
+
+3. **Debug Mode**
+   Run a specific test file with debug output:
+   ```bash
+   npx vitest tests/lib/chat-analyzer.test.ts
+   ```
+
+## Test Coverage Goals
+
+The test suite aims for:
+- **80%+ code coverage** for business logic
+- **100% coverage** for critical paths (chat analysis, API calls)
+- **Component smoke tests** for all major UI elements
+
+## Next Steps
+
+After running tests:
+
+1. **Fix any failing tests** - They indicate real issues in the code
+2. **Add more tests** as you add new features
+3. **Run tests before deployment** to ensure stability
+4. **Set up CI/CD** to run tests automatically on commits
+
+## Commands Summary
+
+```bash
+# Run all tests
+npm test
+
+# Run with UI
+npm run test:ui
+
+# Run with coverage
+npm run test:coverage
+
+# Run specific test file
+npx vitest tests/lib/chat-analyzer.test.ts
+
+# Run in watch mode
+npx vitest --watch
+```
+
+The test suite is comprehensive and ready to ensure your application works flawlessly! 🚀

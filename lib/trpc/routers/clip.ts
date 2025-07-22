@@ -101,6 +101,7 @@ export const clipRouter = createTRPCRouter({
           ...input,
           userId: user.id,
           keywords: input.keywords || [],
+          duration: input.endTime - input.startTime,
         },
       })
 

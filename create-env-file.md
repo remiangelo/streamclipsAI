@@ -10,6 +10,7 @@ touch .env.local
 ## Step 2: Set up each service and get credentials
 
 ### 1. Neon Database (PostgreSQL)
+
 1. Go to [neon.tech](https://neon.tech) and sign up
 2. Click "Create Database"
 3. Name your database (e.g., "streamclips-ai")
@@ -19,6 +20,7 @@ touch .env.local
 5. Both strings will look like: `postgresql://username:password@host.neon.tech/database?sslmode=require`
 
 ### 2. Clerk Authentication
+
 1. Go to [clerk.com](https://clerk.com) and sign up
 2. Create a new application
 3. Name it "StreamClips AI"
@@ -32,6 +34,7 @@ touch .env.local
    - You'll need Twitch Client ID and Secret (see Twitch section below)
 
 ### 3. Twitch API
+
 1. Go to [dev.twitch.tv](https://dev.twitch.tv) and sign in
 2. Click "Your Console" → "Register Your Application"
 3. Fill in:
@@ -44,6 +47,7 @@ touch .env.local
 5. Go back to Clerk and add these credentials to the Twitch social connection
 
 ### 4. Stripe (for payments)
+
 1. Go to [stripe.com](https://stripe.com) and sign up
 2. Make sure you're in "Test mode" (toggle in dashboard)
 3. Go to "Developers" → "API keys"
@@ -56,6 +60,7 @@ touch .env.local
    - Copy the signing secret → `STRIPE_WEBHOOK_SECRET`
 
 ### 5. Upstash Redis
+
 1. Go to [upstash.com](https://upstash.com) and sign up
 2. Create a new Redis database
 3. Choose a region close to your users
@@ -64,6 +69,7 @@ touch .env.local
    - "REST Token" → `UPSTASH_REDIS_REST_TOKEN`
 
 ### 6. Pusher (for real-time updates)
+
 1. Go to [pusher.com](https://pusher.com) and sign up
 2. Create a new Channels app
 3. Name it "streamclips-ai"
@@ -75,12 +81,14 @@ touch .env.local
    - "cluster" → `PUSHER_CLUSTER` and `NEXT_PUBLIC_PUSHER_CLUSTER`
 
 ### 7. Vercel Blob (optional for now)
+
 1. This is only needed when deploying to Vercel
 2. In your Vercel project dashboard, go to "Storage"
 3. Create a Blob store
 4. Copy the token → `BLOB_READ_WRITE_TOKEN`
 
 ### 8. AWS S3 (optional for now)
+
 1. Only needed for production video storage
 2. Create an S3 bucket in AWS Console
 3. Create an IAM user with S3 access
@@ -153,6 +161,7 @@ npx prisma studio
 ## Minimum Required for Local Development
 
 To get started, you minimally need:
+
 1. **Neon Database** credentials (DATABASE_URL)
 2. **Clerk** credentials (for authentication)
 3. **Twitch API** credentials (to fetch VODs)

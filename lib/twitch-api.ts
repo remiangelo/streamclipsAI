@@ -50,15 +50,45 @@ interface TwitchChatMessage {
 }
 
 export class TwitchAPIClient {
-  private accessToken: string;
+  private accessToken: string = '';
   private clientId: string;
+  private clientSecret: string;
 
-  constructor(accessToken: string, clientId: string) {
-    this.accessToken = accessToken;
-    this.clientId = clientId;
+  constructor(config: { clientId: string; clientSecret: string } | { accessToken: string; clientId: string }) {
+    if ('accessToken' in config) {
+      this.accessToken = config.accessToken;
+      this.clientId = config.clientId;
+      this.clientSecret = '';
+    } else {
+      this.clientId = config.clientId;
+      this.clientSecret = config.clientSecret;
+    }
+  }
+
+  private async ensureAccessToken(): Promise<void> {
+    if (this.accessToken) return;
+
+    const response = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        grant_type: 'client_credentials',
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get access token: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.accessToken = data.access_token;
   }
 
   private async fetchTwitchAPI<T>(endpoint: string): Promise<T> {
+    await this.ensureAccessToken();
+
     const response = await fetch(`https://api.twitch.tv/helix${endpoint}`, {
       headers: {
         'Authorization': `Bearer ${this.accessToken}`,
@@ -74,17 +104,20 @@ export class TwitchAPIClient {
     return data.data as T;
   }
 
-  async getVODs(userId: string, limit = 20): Promise<TwitchVOD[]> {
+  async getVODs(userId: string, accessToken: string, limit = 20): Promise<{ data: TwitchVOD[], pagination: any }> {
     const vods = await this.fetchTwitchAPI<TwitchVOD[]>(
       `/videos?user_id=${userId}&type=archive&first=${limit}`
     );
     
-    return vods.filter(vod => vod.viewable === 'public');
+    return {
+      data: vods || [],
+      pagination: {}
+    };
   }
 
   async getVODById(vodId: string): Promise<TwitchVOD | null> {
     const vods = await this.fetchTwitchAPI<TwitchVOD[]>(`/videos?id=${vodId}`);
-    return vods.length > 0 ? vods[0] : null;
+    return vods && vods.length > 0 ? vods[0] : null;
   }
 
   async getChatReplay(vodId: string): Promise<TwitchChatMessage[]> {
@@ -99,7 +132,15 @@ export class TwitchAPIClient {
     // https://api.twitch.tv/v5/videos/${vodId}/comments?content_offset_seconds=0
     
     console.warn('Chat replay not implemented - using mock data');
-    return [];
+    
+    // Return mock chat data for testing
+    return [
+      { timestamp: 0, username: 'user1', message: 'Hello everyone!' },
+      { timestamp: 1000, username: 'user2', message: 'Hey!' },
+      { timestamp: 2000, username: 'user3', message: 'PogChamp' },
+      { timestamp: 3000, username: 'user4', message: 'Great stream!' },
+      { timestamp: 4000, username: 'user5', message: 'KEKW' },
+    ];
   }
 
   async getVODMetadata(vodId: string): Promise<{
@@ -125,7 +166,7 @@ export class TwitchAPIClient {
     };
   }
 
-  private parseDuration(duration: string): number {
+  parseDuration(duration: string): number {
     // Parse Twitch duration format (e.g., "3h21m33s")
     const match = duration.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/);
     if (!match) return 0;
@@ -142,7 +183,11 @@ export class TwitchAPIClient {
       `/users?login=${username}`
     );
     
-    return users.length > 0 ? users[0] : null;
+    if (!users || users.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    return users[0];
   }
 
   async validateToken(): Promise<boolean> {

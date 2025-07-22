@@ -37,12 +37,18 @@ enum JobStatus {
   cancelled
 }
 
+enum UserRole {
+  user
+  admin
+}
+
 model User {
   id               String           @id @default(cuid())
   clerkId          String           @unique
   twitchId         String?          @unique
   twitchUsername   String?
   email            String
+  role             UserRole         @default(user)
   subscriptionTier SubscriptionTier @default(free)
   creditsRemaining Int              @default(0)
   processingQuota  Int              @default(20)
