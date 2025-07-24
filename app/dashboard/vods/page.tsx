@@ -12,19 +12,52 @@ import {
   PlayCircle, 
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  RefreshCw
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { formatDistanceToNow } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
+import { ProcessingStatus } from "@/components/processing-status";
 
 export default function VODsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [processingVods, setProcessingVods] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
+  const utils = trpc.useContext();
+  
   const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = trpc.vod.list.useInfiniteQuery(
     { limit: 20 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     }
   );
+  
+  const analyzeVodMutation = trpc.vod.analyze.useMutation({
+    onMutate: ({ vodId }) => {
+      setProcessingVods(prev => new Set(prev).add(vodId));
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Analysis Started",
+        description: "Your VOD is being analyzed. You'll be notified when clips are ready.",
+      });
+      utils.vod.list.invalidate();
+    },
+    onError: (error, { vodId }) => {
+      setProcessingVods(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(vodId);
+        return newSet;
+      });
+      toast({
+        title: "Analysis Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
 
   const vods = data?.pages.flatMap(page => page.vods) || [];
   const filteredVods = vods.filter(vod => 
@@ -49,6 +82,11 @@ export default function VODsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      READY: "default",
+      ANALYZED: "default",
+      FAILED: "destructive",
+      PENDING: "outline",
+      PROCESSING: "secondary",
       completed: "default",
       failed: "destructive",
       pending: "secondary",
@@ -66,6 +104,8 @@ export default function VODsPage() {
 
   return (
     <div className="space-y-6">
+      <ProcessingStatus />
+      
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold mb-2">My VODs</h2>
@@ -156,32 +196,59 @@ export default function VODsPage() {
                   <Progress value={vod.processingProgress} className="mb-3" />
                 )}
                 <div className="flex gap-2">
-                  {vod.processingStatus === 'pending' && (
-                    <Button className="flex-1" size="sm">
-                      <PlayCircle className="mr-2 h-4 w-4" />
-                      Process VOD
+                  {(vod.status === 'PENDING' || !vod.analyzedAt) && (
+                    <Button 
+                      className="flex-1" 
+                      size="sm"
+                      onClick={() => analyzeVodMutation.mutate({ vodId: vod.id })}
+                      disabled={processingVods.has(vod.id) || analyzeVodMutation.isLoading}
+                    >
+                      {processingVods.has(vod.id) ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Analyze VOD
+                        </>
+                      )}
                     </Button>
                   )}
-                  {vod.processingStatus === 'completed' && (
+                  {vod.status === 'ANALYZED' && (
                     <>
-                      <Button className="flex-1" size="sm" variant="outline">
+                      <Button 
+                        className="flex-1" 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => window.location.href = `/dashboard/vods/${vod.id}/clips`}
+                      >
                         View Clips ({vod._count.clips})
                       </Button>
-                      <Button size="sm" variant="outline">
-                        Reprocess
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => analyzeVodMutation.mutate({ vodId: vod.id })}
+                      >
+                        <RefreshCw className="h-4 w-4" />
                       </Button>
                     </>
                   )}
-                  {(vod.processingStatus === 'analyzing_chat' || 
-                    vod.processingStatus === 'generating_clips' || 
-                    vod.processingStatus === 'processing_video') && (
+                  {vod.status === 'PROCESSING' && (
                     <Button className="flex-1" size="sm" disabled>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                       Processing...
                     </Button>
                   )}
-                  {vod.processingStatus === 'failed' && (
-                    <Button className="flex-1" size="sm" variant="destructive">
-                      Retry Processing
+                  {vod.status === 'FAILED' && (
+                    <Button 
+                      className="flex-1" 
+                      size="sm" 
+                      variant="destructive"
+                      onClick={() => analyzeVodMutation.mutate({ vodId: vod.id })}
+                    >
+                      Retry Analysis
                     </Button>
                   )}
                 </div>

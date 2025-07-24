@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { trpc } from "@/lib/trpc/client";
+import { ProcessingStatus } from "@/components/processing-status";
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = trpc.user.stats.useQuery();
@@ -45,6 +46,9 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome back!</h1>
         <p className="text-muted-foreground">Here&apos;s what&apos;s happening with your content today</p>
       </div>
+
+      {/* Processing Status */}
+      <ProcessingStatus />
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
