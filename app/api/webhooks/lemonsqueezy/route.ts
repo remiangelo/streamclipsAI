@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { getTierByVariantId } from '@/lib/lemonsqueezy';
+import { emailService } from '@/lib/email';
 
 // Verify webhook signature
 function verifyWebhookSignature(
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        await db.user.update({
+        const updatedUser = await db.user.update({
           where: { id: userId },
           data: {
             subscriptionTier: tier,
@@ -79,6 +80,45 @@ export async function POST(request: NextRequest) {
             subscriptionCurrentPeriodEnd: new Date(data.attributes.renews_at),
           },
         });
+
+        // Send subscription confirmation email
+        const preferences = await db.userPreferences.findUnique({
+          where: { userId }
+        });
+        
+        if (updatedUser.email && preferences?.emailSubscriptionUpdates !== false) {
+          const tierFeatures = {
+            starter: [
+              '20 clips per month',
+              'Standard processing speed',
+              'HD export quality',
+              'Basic platform exports',
+            ],
+            pro: [
+              'Unlimited clips per month',
+              'Priority processing',
+              'Custom branding & watermarks',
+              '4K export quality',
+              'Advanced analytics',
+              'All platform exports',
+            ],
+            studio: [
+              'Everything in Pro',
+              'Team collaboration (5 members)',
+              'API access',
+              'Custom AI training',
+              'Priority support',
+              'Bulk processing',
+            ],
+          };
+
+          await emailService.sendSubscriptionConfirmationEmail({
+            to: updatedUser.email,
+            userName: updatedUser.twitchUsername || 'Streamer',
+            planName: tier.charAt(0).toUpperCase() + tier.slice(1),
+            features: tierFeatures[tier] || [],
+          });
+        }
 
         console.log(`Subscription ${eventName} for user ${userId}, tier: ${tier}`);
         break;

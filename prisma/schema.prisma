@@ -85,6 +85,7 @@ model User {
   clips          Clip[]
   processingJobs ProcessingJob[]
   analytics      UserAnalytics[]
+  preferences    UserPreferences?
 }
 
 model VOD {
@@ -194,4 +195,19 @@ model UserAnalytics {
 
   @@unique([userId, date])
   @@index([userId, date(sort: Desc)])
+}
+
+model UserPreferences {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  emailNotifications       Boolean  @default(true)
+  emailProcessingComplete  Boolean  @default(true)
+  emailProcessingFailed    Boolean  @default(true)
+  emailSubscriptionUpdates Boolean  @default(true)
+  emailProductUpdates      Boolean  @default(false)
+  emailWeeklyDigest        Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

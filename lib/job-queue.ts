@@ -4,6 +4,7 @@ import { ChatAnalyzer } from '@/lib/chat-analyzer'
 import { TwitchAPIClient } from '@/lib/twitch-api'
 import { VideoProcessor } from '@/lib/video-processor'
 import { StorageManager } from '@/lib/storage'
+import { emailService } from '@/lib/email'
 
 export interface JobResult {
   success: boolean
@@ -216,6 +217,21 @@ class AnalyzeVODProcessor implements JobProcessor {
         }
       })
 
+      // Send email notification if user has email and preferences allow
+      const userPreferences = await db.userPreferences.findUnique({
+        where: { userId: vod.userId }
+      })
+      
+      if (vod.user.email && userPreferences?.emailProcessingComplete !== false) {
+        await emailService.sendProcessingCompleteEmail({
+          to: vod.user.email,
+          userName: vod.user.name || 'Streamer',
+          vodTitle: vod.title,
+          clipCount: clips.length,
+          vodId: vod.id,
+        })
+      }
+
       // Get the actual VOD download URL
       const vodDownloadUrl = await twitchClient.getVODDownloadUrl(vod.twitchVodId);
       
@@ -250,6 +266,24 @@ class AnalyzeVODProcessor implements JobProcessor {
       }
     } catch (error) {
       console.error('VOD analysis error:', error)
+      
+      // Send failure email notification if preferences allow
+      if (vod && vod.user.email) {
+        const userPreferences = await db.userPreferences.findUnique({
+          where: { userId: vod.userId }
+        })
+        
+        if (userPreferences?.emailProcessingFailed !== false) {
+          await emailService.sendProcessingFailedEmail({
+            to: vod.user.email,
+            userName: vod.user.name || 'Streamer',
+            vodTitle: vod.title,
+            errorMessage: error instanceof Error ? error.message : 'Analysis failed',
+            vodId: vod.id,
+          })
+        }
+      }
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Analysis failed'
