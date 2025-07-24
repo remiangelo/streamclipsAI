@@ -14,13 +14,15 @@ import {
   Sparkles,
   Home,
   HelpCircle,
-  ChevronRight
+  ChevronRight,
+  FlaskConical
 } from "lucide-react";
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: Home },
   { name: "My VODs", href: "/dashboard/vods", icon: Video },
   { name: "My Clips", href: "/dashboard/clips", icon: Film },
+  { name: "Chat Analyzer", href: "/dashboard/analyzer", icon: FlaskConical },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },

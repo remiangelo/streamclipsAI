@@ -19,7 +19,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export default function VODsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { data, isLoading, fetchNextPage, hasNextPage } = trpc.vod.list.useInfiniteQuery(
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = trpc.vod.list.useInfiniteQuery(
     { limit: 20 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -87,8 +87,29 @@ export default function VODsPage() {
         />
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-12">Loading VODs...</div>
+      {error ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="text-destructive mb-2">Failed to load VODs</p>
+            <p className="text-sm text-muted-foreground">{error.message}</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <div className="aspect-video bg-muted animate-pulse" />
+              <CardHeader className="pb-3">
+                <div className="h-5 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-muted rounded animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : filteredVods.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
@@ -175,8 +196,9 @@ export default function VODsPage() {
           <Button 
             variant="outline" 
             onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
           >
-            Load More
+            {isFetchingNextPage ? "Loading..." : "Load More"}
           </Button>
         </div>
       )}

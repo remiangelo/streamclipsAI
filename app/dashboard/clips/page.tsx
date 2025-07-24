@@ -12,7 +12,8 @@ import {
   MoreVertical,
   Trash2,
   Eye,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,7 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export default function ClipsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { data, isLoading, fetchNextPage, hasNextPage } = trpc.clip.list.useInfiniteQuery(
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = trpc.clip.list.useInfiniteQuery(
     { limit: 20 },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -67,8 +68,29 @@ export default function ClipsPage() {
         />
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-12">Loading clips...</div>
+      {error ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <p className="text-destructive mb-2">Failed to load clips</p>
+            <p className="text-sm text-muted-foreground">{error.message}</p>
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <div className="aspect-video bg-muted animate-pulse" />
+              <CardHeader className="pb-3">
+                <div className="h-5 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-muted rounded animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : filteredClips.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
@@ -169,8 +191,9 @@ export default function ClipsPage() {
           <Button 
             variant="outline" 
             onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
           >
-            Load More
+            {isFetchingNextPage ? "Loading..." : "Load More"}
           </Button>
         </div>
       )}
