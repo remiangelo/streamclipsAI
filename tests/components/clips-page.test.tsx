@@ -4,26 +4,47 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 import ClipsPage from '@/app/dashboard/clips/page'
 import { mockTRPCResponses } from '../mocks/trpc'
+import { createMockClip } from '../mocks/prisma'
 
 // Mock the tRPC client
-vi.mock('@/lib/trpc/client', () => ({
-  trpc: {
+vi.mock('@/lib/trpc/client', () => {
+  const mockTrpc = {
     clip: {
       list: {
-        useInfiniteQuery: vi.fn(),
-      },
-    },
-  },
-}))
+        useInfiniteQuery: vi.fn(() => ({
+          data: { pages: [], pageParams: [] },
+          isLoading: false,
+          error: null,
+          fetchNextPage: vi.fn(),
+          hasNextPage: false,
+          isFetchingNextPage: false
+        }))
+      }
+    }
+  };
+  return { trpc: mockTrpc };
+})
 
 // Mock date-fns
 vi.mock('date-fns', () => ({
   formatDistanceToNow: (date: Date) => '2 hours ago',
 }))
 
+// Mock useToast
+vi.mock('@/components/ui/use-toast', () => ({
+  useToast: () => ({
+    toast: vi.fn(),
+  }),
+}))
+
+import { trpc } from '@/lib/trpc/client'
+
 describe('ClipsPage', () => {
   const mockClipsData = {
-    pages: [mockTRPCResponses.clip.list()],
+    pages: [{ 
+      clips: [createMockClip()],
+      nextCursor: null 
+    }],
     pageParams: [undefined],
   }
 

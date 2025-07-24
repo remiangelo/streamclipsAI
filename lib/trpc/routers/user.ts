@@ -85,6 +85,7 @@ export const userRouter = createTRPCRouter({
       creditsRemaining: user.creditsRemaining,
       processingQuota: user.processingQuota,
       subscriptionTier: user.subscriptionTier,
+      role: user.role,
     }
   }),
 })

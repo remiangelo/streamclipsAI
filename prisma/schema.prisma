@@ -37,9 +37,31 @@ enum JobStatus {
   cancelled
 }
 
+enum ProcessingJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ClipStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
 enum UserRole {
   user
   admin
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAUSED
+  EXPIRED
+  INACTIVE
 }
 
 model User {
@@ -50,6 +72,10 @@ model User {
   email            String
   role             UserRole         @default(user)
   subscriptionTier SubscriptionTier @default(free)
+  subscriptionStatus SubscriptionStatus @default(INACTIVE)
+  lemonSqueezySubscriptionId String?
+  lemonSqueezyCustomerId String?
+  subscriptionCurrentPeriodEnd DateTime?
   creditsRemaining Int              @default(0)
   processingQuota  Int              @default(20)
   createdAt        DateTime         @default(now())
@@ -71,12 +97,14 @@ model VOD {
   gameCategory     String?
   createdDate      DateTime
   chatAnalysis     Json?
+  status           String           @default("PENDING")
   processingStatus ProcessingStatus @default(pending)
   processingProgress Int            @default(0)
   thumbnailUrl     String?
   vodUrl           String?
   qualityLevels    String[]
   fileSizeMb       Int?
+  analyzedAt       DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -88,53 +116,64 @@ model VOD {
 }
 
 model Clip {
-  id               String   @id @default(cuid())
+  id               String     @id @default(cuid())
   vodId            String
   userId           String
   title            String
   startTime        Int
   endTime          Int
   duration         Int
+  status           ClipStatus @default(PENDING)
   confidenceScore  Float
   highlightReason  String?
   keywords         String[]
+  videoUrl         String?
   clipUrl          String?
   thumbnailUrl     String?
   socialFormats    Json?
-  downloadCount    Int      @default(0)
-  shareCount       Int      @default(0)
+  downloadCount    Int        @default(0)
+  shareCount       Int        @default(0)
   engagementData   Json?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  metadata         Json?
+  processedAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   vod  VOD  @relation(fields: [vodId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([vodId])
   @@index([confidenceScore(sort: Desc)])
+  @@index([status])
 }
 
 model ProcessingJob {
   id               String    @id @default(cuid())
   userId           String
   vodId            String?
-  jobType          JobType
-  status           JobStatus @default(pending)
+  type             String
+  status           ProcessingJobStatus @default(PENDING)
   progress         Int       @default(0)
+  parameters       Json?
+  result           Json?
+  priority         Int       @default(0)
+  attempts         Int       @default(0)
   workerId         String?
   startedAt        DateTime?
   completedAt      DateTime?
-  errorMessage     String?
+  error            String?
   retryCount       Int       @default(0)
   processingTimeMs Int?
   memoryUsedMb     Int?
   costCents        Int?
   createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   vod  VOD? @relation(fields: [vodId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+  @@index([priority, createdAt])
 }
 
 model UserAnalytics {
@@ -147,6 +186,9 @@ model UserAnalytics {
   avgConfidenceScore    Float?
   topHighlightReasons   String[]
   popularKeywords       String[]
+  lastActiveAt          DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -24,6 +24,7 @@ import { trpc } from "@/lib/trpc/client";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 import { ProcessingStatus } from "@/components/processing-status";
+import { ProcessingModal } from "@/components/processing-modal";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,9 @@ export default function VODsPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [vodUrl, setVodUrl] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [processingModalOpen, setProcessingModalOpen] = useState(false);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [currentVodId, setCurrentVodId] = useState<string | null>(null);
   const { toast } = useToast();
   const utils = trpc.useContext();
   
@@ -53,11 +57,18 @@ export default function VODsPage() {
     onMutate: ({ vodId }) => {
       setProcessingVods(prev => new Set(prev).add(vodId));
     },
-    onSuccess: (data) => {
-      toast({
-        title: "Analysis Started",
-        description: "Your VOD is being analyzed. You'll be notified when clips are ready.",
-      });
+    onSuccess: (data, { vodId }) => {
+      // Show progress modal with job ID
+      if (data.jobId) {
+        setCurrentJobId(data.jobId);
+        setCurrentVodId(vodId);
+        setProcessingModalOpen(true);
+      } else {
+        toast({
+          title: "Analysis Started",
+          description: "Your VOD is being analyzed. You'll be notified when clips are ready.",
+        });
+      }
       utils.vod.list.invalidate();
     },
     onError: (error, { vodId }) => {
@@ -373,6 +384,19 @@ export default function VODsPage() {
           </Button>
         </div>
       )}
+
+      {/* Processing Modal */}
+      <ProcessingModal
+        isOpen={processingModalOpen}
+        onClose={() => {
+          setProcessingModalOpen(false);
+          setCurrentJobId(null);
+          setCurrentVodId(null);
+          setProcessingVods(new Set());
+        }}
+        jobId={currentJobId}
+        vodId={currentVodId || undefined}
+      />
     </div>
   );
 }

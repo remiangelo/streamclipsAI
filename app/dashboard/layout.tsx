@@ -20,6 +20,7 @@ import {
   Sun
 } from "lucide-react";
 import { useState } from "react";
+import { AdminLink } from "@/components/admin-link";
 
 const navigation = [
   { name: "Overview", href: "/dashboard", icon: Home },
@@ -94,6 +95,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
+          
+          {/* Admin link */}
+          <div className="px-3 pb-2">
+            <AdminLink />
+          </div>
           
           {/* Help section */}
           <div className="border-t border-gray-800 p-4">

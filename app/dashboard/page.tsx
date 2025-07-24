@@ -230,7 +230,7 @@ export default function DashboardPage() {
                   {stats?.creditsRemaining || 0} credits remaining
                 </p>
                 {stats?.subscriptionTier === 'free' && (
-                  <Link href="/dashboard/billing">
+                  <Link href="/dashboard/subscription">
                     <Button variant="secondary" className="w-full bg-white text-purple-600 hover:bg-gray-100">
                       Upgrade to Pro
                     </Button>

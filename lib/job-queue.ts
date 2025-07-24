@@ -1,4 +1,4 @@
-import { ProcessingJob, ProcessingJobStatus } from '@prisma/client'
+import { ProcessingJob, ProcessingJobStatus, ClipStatus } from '@prisma/client'
 import { db } from '@/lib/db'
 import { ChatAnalyzer } from '@/lib/chat-analyzer'
 import { TwitchAPIClient } from '@/lib/twitch-api'
@@ -35,18 +35,18 @@ export class JobQueue {
     type: string,
     vodId: string,
     userId: string,
-    parameters: any = {}
+    parameters: any = {},
+    priority: number = 0
   ): Promise<ProcessingJob> {
     return await db.processingJob.create({
       data: {
         type,
         vodId,
         userId,
-        status: 'PENDING',
+        status: ProcessingJobStatus.PENDING,
         parameters,
         attempts: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        priority
       }
     })
   }
@@ -77,7 +77,7 @@ export class JobQueue {
       // Get next pending job
       const job = await db.processingJob.findFirst({
         where: {
-          status: 'PENDING',
+          status: ProcessingJobStatus.PENDING,
           attempts: { lt: 3 }
         },
         orderBy: [
@@ -95,7 +95,7 @@ export class JobQueue {
       await db.processingJob.update({
         where: { id: job.id },
         data: {
-          status: 'PROCESSING',
+          status: ProcessingJobStatus.PROCESSING,
           startedAt: new Date(),
           attempts: job.attempts + 1
         }
@@ -114,7 +114,7 @@ export class JobQueue {
         await db.processingJob.update({
           where: { id: job.id },
           data: {
-            status: 'COMPLETED',
+            status: ProcessingJobStatus.COMPLETED,
             completedAt: new Date(),
             result: result.data
           }
@@ -124,7 +124,7 @@ export class JobQueue {
         await db.processingJob.update({
           where: { id: job.id },
           data: {
-            status: isFinalAttempt ? 'FAILED' : 'PENDING',
+            status: isFinalAttempt ? ProcessingJobStatus.FAILED : ProcessingJobStatus.PENDING,
             error: result.error
           }
         })
@@ -193,7 +193,7 @@ class AnalyzeVODProcessor implements JobProcessor {
               startTime: Math.floor(highlight.timestamp / 1000),
               endTime: Math.floor(highlight.endTimestamp / 1000),
               confidenceScore: highlight.confidenceScore,
-              status: 'PENDING',
+              status: ClipStatus.PENDING,
               metadata: {
                 messageCount: highlight.messageCount,
                 uniqueUsers: highlight.uniqueUsers,
@@ -216,6 +216,13 @@ class AnalyzeVODProcessor implements JobProcessor {
         }
       })
 
+      // Get the actual VOD download URL
+      const vodDownloadUrl = await twitchClient.getVODDownloadUrl(vod.twitchVodId);
+      
+      if (!vodDownloadUrl) {
+        throw new Error('Failed to get VOD download URL');
+      }
+
       // Create extraction jobs for each clip
       for (const clip of clips) {
         await db.processingJob.create({
@@ -223,10 +230,10 @@ class AnalyzeVODProcessor implements JobProcessor {
             type: 'extract_clip',
             vodId: vod.id,
             userId: vod.userId,
-            status: 'PENDING',
+            status: ProcessingJobStatus.PENDING,
             parameters: {
               clipId: clip.id,
-              vodUrl: vod.vodUrl,
+              vodUrl: vodDownloadUrl,
               startTime: clip.startTime,
               endTime: clip.endTime
             }
@@ -272,23 +279,29 @@ class ExtractClipProcessor implements JobProcessor {
       // Update clip status
       await db.clip.update({
         where: { id: clipId },
-        data: { status: 'PROCESSING' }
+        data: { status: ClipStatus.PROCESSING }
       })
 
-      // Process video
+      // Process video with progress tracking
       const processor = new VideoProcessor()
       const result = await processor.extractClip({
         inputUrl: vodUrl,
         startTime,
         endTime,
         outputFormat: 'mp4',
-        resolution: '1080p'
+        resolution: '1080p',
+        onProgress: async (progress) => {
+          await db.processingJob.update({
+            where: { id: job.id },
+            data: { progress: Math.round(progress) }
+          })
+        }
       })
 
       if (!result.success) {
         await db.clip.update({
           where: { id: clipId },
-          data: { status: 'FAILED' }
+          data: { status: ClipStatus.FAILED }
         })
         return { success: false, error: result.error }
       }
@@ -299,7 +312,7 @@ class ExtractClipProcessor implements JobProcessor {
           type: 'upload_clip',
           vodId: job.vodId,
           userId: job.userId,
-          status: 'PENDING',
+          status: ProcessingJobStatus.PENDING,
           parameters: {
             clipId,
             localPath: result.outputPath,
@@ -371,7 +384,7 @@ class UploadClipProcessor implements JobProcessor {
       await db.clip.update({
         where: { id: clipId },
         data: {
-          status: 'READY',
+          status: ClipStatus.READY,
           videoUrl: uploadResult.url,
           thumbnailUrl,
           duration,

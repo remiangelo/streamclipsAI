@@ -1,8 +1,11 @@
-import { spawn } from 'child_process'
+import { spawn, exec } from 'child_process'
 import { promises as fs } from 'fs'
 import path from 'path'
 import os from 'os'
 import { v4 as uuidv4 } from 'uuid'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
 
 export interface VideoProcessingOptions {
   inputUrl: string
@@ -13,6 +16,7 @@ export interface VideoProcessingOptions {
   fps?: number
   bitrate?: string
   preset?: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow'
+  onProgress?: (progress: number) => void
 }
 
 export interface ProcessingResult {
@@ -54,8 +58,14 @@ export class VideoProcessor {
     const outputPath = path.join(this.tempDir, `clip_${uuidv4()}.${outputFormat}`)
 
     try {
+      // For Twitch VODs, we need to handle authentication
+      const isM3U8 = inputUrl.includes('.m3u8')
+      const headers = isM3U8 && process.env.TWITCH_CLIENT_ID ? 
+        ['-headers', `Client-ID: ${process.env.TWITCH_CLIENT_ID}\r\n`] : []
+
       // Build FFmpeg command
       const args = [
+        ...headers,
         '-ss', startTime.toString(),
         '-i', inputUrl,
         '-t', duration.toString(),
@@ -66,7 +76,8 @@ export class VideoProcessor {
         '-b:a', '192k',
         '-b:v', bitrate,
         '-r', fps.toString(),
-        '-movflags', '+faststart'
+        '-movflags', '+faststart',
+        '-max_muxing_queue_size', '1024'
       ]
 
       // Add resolution scaling if not original
@@ -79,10 +90,17 @@ export class VideoProcessor {
         args.push('-vf', scales[resolution])
       }
 
+      // Add progress monitoring
+      args.push('-progress', 'pipe:1')
       args.push('-y', outputPath)
 
-      // Execute FFmpeg
-      await this.runFFmpeg(args)
+      // Execute FFmpeg with progress tracking
+      const progressCallback = (progress: number) => {
+        console.log(`Extraction progress: ${progress.toFixed(1)}%`)
+        options.onProgress?.(progress)
+      }
+      
+      await this.runFFmpegWithProgress(args, duration, progressCallback)
 
       // Verify output file exists
       const stats = await fs.stat(outputPath)
@@ -365,6 +383,89 @@ export class VideoProcessor {
       }
     } catch (error) {
       console.error('Cleanup error:', error)
+    }
+  }
+
+  private runFFmpegWithProgress(
+    args: string[],
+    totalDuration: number,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const ffmpeg = spawn('ffmpeg', args)
+      let stderr = ''
+      let lastProgress = 0
+
+      ffmpeg.stdout.on('data', (data) => {
+        const output = data.toString()
+        const lines = output.split('\n')
+        
+        for (const line of lines) {
+          if (line.startsWith('out_time_ms=')) {
+            const timeMs = parseInt(line.split('=')[1]) / 1000000
+            const progress = (timeMs / totalDuration) * 100
+            
+            if (progress > lastProgress && onProgress) {
+              lastProgress = progress
+              onProgress(Math.min(progress, 100))
+            }
+          }
+        }
+      })
+
+      ffmpeg.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      ffmpeg.on('close', (code) => {
+        if (code === 0) {
+          if (onProgress) onProgress(100)
+          resolve()
+        } else {
+          reject(new Error(`FFmpeg exited with code ${code}: ${stderr}`))
+        }
+      })
+
+      ffmpeg.on('error', (error) => {
+        reject(error)
+      })
+    })
+  }
+
+  async downloadVODSegment(
+    vodUrl: string,
+    startTime: number,
+    duration: number
+  ): Promise<string> {
+    const tempPath = path.join(this.tempDir, `vod_${uuidv4()}.ts`)
+    
+    try {
+      const args = [
+        '-i', vodUrl,
+        '-ss', startTime.toString(),
+        '-t', duration.toString(),
+        '-c', 'copy',
+        '-y', tempPath
+      ]
+
+      if (vodUrl.includes('.m3u8') && process.env.TWITCH_CLIENT_ID) {
+        args.unshift('-headers', `Client-ID: ${process.env.TWITCH_CLIENT_ID}\r\n`)
+      }
+
+      await this.runFFmpeg(args)
+      return tempPath
+    } catch (error) {
+      console.error('VOD download error:', error)
+      throw error
+    }
+  }
+
+  async validateFFmpegInstallation(): Promise<boolean> {
+    try {
+      const { stdout } = await execAsync('ffmpeg -version')
+      return stdout.includes('ffmpeg version')
+    } catch {
+      return false
     }
   }
 }

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { createTRPCRouter, protectedProcedure } from '../trpc'
 import { TRPCError } from '@trpc/server'
 import { jobQueue } from '@/lib/job-queue'
+import { checkClipLimit } from '@/lib/subscription-limits'
 
 export const vodRouter = createTRPCRouter({
   list: protectedProcedure
@@ -156,30 +157,8 @@ export const vodRouter = createTRPCRouter({
         })
       }
 
-      // Check user's subscription limits
-      const userAnalytics = await ctx.db.userAnalytics.findUnique({
-        where: { userId: user.id },
-      })
-
-      if (userAnalytics && user.subscriptionTier === 'FREE') {
-        const monthStart = new Date()
-        monthStart.setDate(1)
-        monthStart.setHours(0, 0, 0, 0)
-        
-        const monthlyClips = await ctx.db.clip.count({
-          where: {
-            userId: user.id,
-            createdAt: { gte: monthStart },
-          },
-        })
-
-        if (monthlyClips >= 5) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Monthly clip limit reached. Upgrade to create more clips.',
-          })
-        }
-      }
+      // Check subscription limits before processing
+      await checkClipLimit(user.id)
 
       // Update VOD status
       await ctx.db.vOD.update({

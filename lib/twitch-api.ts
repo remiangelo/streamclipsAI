@@ -321,13 +321,65 @@ export class TwitchAPIClient {
   }
 
   async getVODDownloadUrl(vodId: string): Promise<string | null> {
-    // Note: Direct VOD URLs require special authentication
-    // In production, you'd use a service like youtube-dl or streamlink
-    const vod = await this.getVODById(vodId);
-    if (!vod) return null;
-    
-    // This is a placeholder - actual implementation would use
-    // a service to get the m3u8 playlist URL
-    return `https://usher.ttvnw.net/vod/${vodId}.m3u8`;
+    try {
+      const vod = await this.getVODById(vodId);
+      if (!vod) return null;
+      
+      // Get access token for VOD playback
+      const tokenResponse = await fetch(
+        `https://gql.twitch.tv/gql`,
+        {
+          method: 'POST',
+          headers: {
+            'Client-ID': this.clientId,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            operationName: 'PlaybackAccessToken',
+            variables: {
+              isLive: false,
+              login: '',
+              isVod: true,
+              vodID: vodId,
+              playerType: 'site'
+            },
+            extensions: {
+              persistedQuery: {
+                version: 1,
+                sha256Hash: '0828119ded1c13477966434e15800ff57ddacf13ba1911c129dc2200705b0712'
+              }
+            }
+          })
+        }
+      );
+
+      if (!tokenResponse.ok) {
+        console.error('Failed to get playback token');
+        return null;
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.data?.videoPlaybackAccessToken;
+
+      if (!accessToken) {
+        console.error('No access token in response');
+        return null;
+      }
+
+      // Build M3U8 URL with authentication
+      const params = new URLSearchParams({
+        nauthsig: accessToken.signature,
+        nauth: accessToken.value,
+        allow_source: 'true',
+        fast_bread: 'true',
+        player_backend: 'mediaplayer',
+        transcode_mode: 'cbr_v1'
+      });
+
+      return `https://usher.ttvnw.net/vod/${vodId}.m3u8?${params.toString()}`;
+    } catch (error) {
+      console.error('Error getting VOD download URL:', error);
+      return null;
+    }
   }
 }

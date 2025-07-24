@@ -47,3 +47,27 @@ const enforceUserIsAuthed = t.middleware(async ({ ctx, next }) => {
 
 export const publicProcedure = t.procedure
 export const protectedProcedure = t.procedure.use(enforceUserIsAuthed)
+
+const enforceUserIsAdmin = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.auth.userId) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  
+  // Check if user is admin
+  const user = await ctx.db.user.findUnique({
+    where: { clerkId: ctx.auth.userId },
+    select: { role: true }
+  })
+  
+  if (!user || user.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' })
+  }
+  
+  return next({
+    ctx: {
+      auth: { ...ctx.auth, userId: ctx.auth.userId },
+    },
+  })
+})
+
+export const adminProcedure = t.procedure.use(enforceUserIsAdmin)
