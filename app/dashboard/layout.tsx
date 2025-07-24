@@ -36,8 +36,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [darkMode, setDarkMode] = useState(true);
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Background gradient */}
+    <div className="min-h-screen">
+      {/* Twitch logo collage background */}
+      <div className="twitch-bg" />
+      
+      {/* Background gradient overlay */}
       <div className="fixed inset-0 gradient-bg" />
       
       {/* Sidebar */}

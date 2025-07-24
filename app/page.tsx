@@ -5,8 +5,11 @@ import { ArrowRight, Sparkles, Zap, BarChart3, Clock, CheckCircle, Play, Star, S
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Animated gradient background */}
+    <div className="min-h-screen text-white relative overflow-hidden">
+      {/* Twitch logo collage background */}
+      <div className="twitch-bg" />
+      
+      {/* Animated gradient overlay */}
       <div className="gradient-bg absolute inset-0" />
       
       {/* Floating orbs */}
