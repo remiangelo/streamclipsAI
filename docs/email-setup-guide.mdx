@@ -1,0 +1,208 @@
+# 📧 Setting Up Email Notifications - A Super Simple Guide
+
+Hey there! Let's set up email notifications for your StreamClips AI app. I'll explain everything step by step, like we're building with LEGO blocks! 🎨
+
+## 🎯 What We're Building
+
+Your app will send emails to users when:
+- They sign up (Welcome email! 👋)
+- Their video clips are ready (Yay! 🎬)
+- Something goes wrong (Oops, but we'll help! 🔧)
+- They upgrade their subscription (Thanks! 💎)
+
+## 📦 What You'll Need
+
+Think of these as your LEGO pieces:
+1. **Resend Account** - This sends the emails (like a mail truck 🚚)
+2. **Clerk Webhooks** - This tells us when someone joins (like a doorbell 🔔)
+3. **Your Code Editor** - Where we'll put everything together
+
+---
+
+## 🚀 Step 1: Get Your Resend Account (The Mail Truck)
+
+### A. Sign Up for Resend
+
+1. Go to [resend.com](https://resend.com) 
+2. Click the big "Sign Up" button
+3. Use your email to create an account (it's free to start!)
+
+### B. Get Your Special Key (API Key)
+
+1. After logging in, you'll see your dashboard
+2. Look for a section called "API Keys" on the left sidebar
+3. Click "Create API Key"
+4. Give it a name like "StreamClips Emails"
+5. Copy the key that starts with `re_` - **Save this somewhere safe!** 🔑
+
+<Callout type="warning">
+⚠️ Your API key is like a password - don't share it with anyone!
+</Callout>
+
+### C. Add the Key to Your App
+
+1. Open your project folder
+2. Find the file called `.env.local` (if you don't have one, create it!)
+3. Add this line at the bottom:
+   ```bash
+   RESEND_API_KEY=re_YOUR_KEY_HERE
+   ```
+   (Replace `re_YOUR_KEY_HERE` with your actual key)
+
+---
+
+## 🔔 Step 2: Set Up Clerk Webhooks (The Doorbell)
+
+This tells your app when someone new signs up!
+
+### A. Go to Your Clerk Dashboard
+
+1. Log in to [clerk.com](https://clerk.com)
+2. Click on your StreamClips project
+
+### B. Create a Webhook Endpoint
+
+1. In the left sidebar, find "Webhooks"
+2. Click "Add Endpoint"
+3. For the URL, put:
+   ```
+   https://your-app-name.vercel.app/api/webhooks/clerk
+   ```
+   (Replace `your-app-name` with your actual Vercel app name)
+
+<Callout type="info">
+💡 If you're testing locally, you can use a tool called ngrok to create a temporary URL!
+</Callout>
+
+### C. Choose What to Listen For
+
+1. Check these boxes:
+   - ✅ `user.created`
+   - ✅ `user.updated` 
+   - ✅ `user.deleted`
+2. Click "Create"
+
+### D. Get Your Webhook Secret
+
+1. After creating, you'll see your webhook in the list
+2. Click on it
+3. Look for "Signing Secret" 
+4. Copy this long string of letters and numbers
+5. Add it to your `.env.local` file:
+   ```bash
+   CLERK_WEBHOOK_SECRET=whsec_YOUR_SECRET_HERE
+   ```
+
+---
+
+## 💾 Step 3: Update Your Database (Adding New Shelves)
+
+Your database needs a new table to remember who wants which emails!
+
+### Run This Command:
+
+Open your terminal (the black window where you type commands) and run:
+
+```bash
+npm run db:push
+```
+
+This adds a new "preferences" table to your database - like adding a new shelf to store user choices! 📚
+
+---
+
+## 🎨 Step 4: Test Your Emails (Make Sure They Look Pretty)
+
+### See How Your Emails Look:
+
+1. Start your app locally:
+   ```bash
+   npm run dev
+   ```
+
+2. Open your browser and go to these URLs to preview each email:
+   - Welcome Email: `http://localhost:3000/api/emails/preview?template=welcome`
+   - Clips Ready: `http://localhost:3000/api/emails/preview?template=processing-complete`
+   - Processing Failed: `http://localhost:3000/api/emails/preview?template=processing-failed`
+   - Subscription Email: `http://localhost:3000/api/emails/preview?template=subscription-confirmation`
+
+<Callout type="tip">
+🎨 Want to change how emails look? Edit the files in the `/emails` folder!
+</Callout>
+
+---
+
+## 🧪 Step 5: Test Everything Works!
+
+### A. Test Welcome Emails
+
+1. Sign up for a new account on your app
+2. Check your email - you should get a welcome message! 🎉
+
+### B. Test Processing Emails
+
+1. Upload a VOD and click "Analyze"
+2. Wait for it to finish
+3. Check your email - you should get a "clips ready" message!
+
+### C. Let Users Control Their Emails
+
+Users can now go to `/dashboard/settings/notifications` to turn emails on/off! 
+
+---
+
+## 🚨 Troubleshooting (When Things Go Wrong)
+
+### Email Not Sending?
+
+1. **Check your API key** - Make sure it's in `.env.local`
+2. **Restart your app** - Sometimes it needs a fresh start:
+   ```bash
+   npm run dev
+   ```
+3. **Check Resend dashboard** - Log in to Resend and check if emails are being sent
+
+### Webhook Not Working?
+
+1. **Check the URL** - Make sure it matches your app exactly
+2. **Check the secret** - Make sure it's copied correctly in `.env.local`
+3. **Check Clerk logs** - In Clerk dashboard, check webhook logs for errors
+
+---
+
+## 📝 Quick Checklist
+
+Before going live, make sure you have:
+
+- [ ] Resend API key in `.env.local`
+- [ ] Clerk webhook secret in `.env.local`
+- [ ] Run `npm run db:push` to update database
+- [ ] Tested welcome email by signing up
+- [ ] Tested processing emails with a VOD
+- [ ] Checked email preview pages look good
+
+---
+
+## 🎉 You Did It!
+
+Your app now sends beautiful emails to keep users happy and informed! 
+
+### What's Next?
+
+- **Custom Domain**: Set up a custom email domain in Resend (like noreply@yourdomain.com)
+- **Email Templates**: Customize the email designs in the `/emails` folder
+- **More Notifications**: Add emails for other events like password resets
+
+<Callout type="success">
+🌟 Pro Tip: Always test emails before going live. Your users will thank you!
+</Callout>
+
+---
+
+## 🆘 Need Help?
+
+- **Resend Docs**: [resend.com/docs](https://resend.com/docs)
+- **Clerk Docs**: [clerk.com/docs](https://clerk.com/docs)
+- **Our Discord**: Join our community for help!
+
+Remember: Setting up emails is like teaching your app to talk to users. Take it slow, test everything, and you'll do great! 🚀
