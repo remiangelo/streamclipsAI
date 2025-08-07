@@ -2,12 +2,16 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SignInButton, SignUpButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import { ArrowRight, Sparkles, Zap, BarChart3, Clock, CheckCircle, Play, Star, Shield, Cpu } from "lucide-react";
+import { AnimatedBackground } from "@/components/animated-background";
 
 export default function HomePage() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
       {/* Twitch logo collage background */}
       <div className="twitch-bg" />
+      
+      {/* Animated particles background */}
+      <AnimatedBackground />
       
       {/* Animated gradient overlay */}
       <div className="gradient-bg absolute inset-0" />
@@ -18,23 +22,26 @@ export default function HomePage() {
       
       {/* Header */}
       <header className="relative z-20 container mx-auto px-4 py-6">
-        <nav className="flex justify-between items-center glass-dark rounded-2xl px-6 py-4">
+        <nav className="flex justify-between items-center glass-subtle rounded-2xl px-6 py-4 backdrop-blur-xl">
           <Link href="/" className="flex items-center space-x-3 group">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 group-hover:shadow-lg group-hover:shadow-purple-500/25 transition-all">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 group-hover:shadow-lg group-hover:shadow-purple-500/25 transition-all group-hover:scale-110">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold">StreamClips AI</span>
           </Link>
           
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/features" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link href="/features" className="relative text-sm text-gray-400 hover:text-white transition-colors group">
               Features
+              <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600 scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
             </Link>
-            <Link href="/pricing" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link href="/pricing" className="relative text-sm text-gray-400 hover:text-white transition-colors group">
               Pricing
+              <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600 scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
             </Link>
-            <Link href="/docs" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link href="/docs" className="relative text-sm text-gray-400 hover:text-white transition-colors group">
               Docs
+              <span className="absolute inset-x-0 -bottom-1 h-0.5 bg-gradient-to-r from-purple-600 to-pink-600 scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
             </Link>
             
             <div className="h-6 w-px bg-gray-800" />
@@ -85,7 +92,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20 animate-fade-up" style={{animationDelay: '0.2s'}}>
               <SignedOut>
                 <SignUpButton mode="modal">
-                  <Button size="lg" className="btn-primary group px-8">
+                  <Button size="lg" variant="accent" className="group px-8">
                     Start free trial
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
@@ -93,13 +100,13 @@ export default function HomePage() {
               </SignedOut>
               <SignedIn>
                 <Link href="/dashboard">
-                  <Button size="lg" className="btn-primary group px-8">
+                  <Button size="lg" variant="accent" className="group px-8">
                     Go to Dashboard
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
               </SignedIn>
-              <Button size="lg" variant="outline" className="btn-secondary group">
+              <Button size="lg" variant="outline" className="group">
                 <Play className="mr-2 h-4 w-4" />
                 Watch demo
               </Button>
@@ -107,9 +114,10 @@ export default function HomePage() {
 
             {/* Hero Video/Image Preview */}
             <div className="relative mx-auto max-w-4xl animate-fade-up" style={{animationDelay: '0.3s'}}>
-              <div className="glass-dark rounded-2xl p-2 animate-pulse-glow">
-                <div className="aspect-video bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl flex items-center justify-center">
-                  <Play className="h-16 w-16 text-white/50" />
+              <div className="glass-subtle rounded-2xl p-2 card-hover">
+                <div className="aspect-video bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 animated-grid opacity-20" />
+                  <Play className="h-16 w-16 text-white/50 relative z-10" />
                 </div>
               </div>
               
@@ -141,7 +149,7 @@ export default function HomePage() {
                 { value: "95%", label: "Accuracy Rate", delay: "100ms" },
                 { value: "< 2min", label: "Processing Time", delay: "150ms" }
               ].map((stat, i) => (
-                <div key={i} className="glass-dark rounded-2xl p-6 text-center hover:scale-105 transition-transform animate-fade-up" style={{animationDelay: stat.delay}}>
+                <div key={i} className="glass-subtle rounded-2xl p-6 text-center card-hover animate-fade-up" style={{animationDelay: stat.delay}}>
                   <div className="text-3xl font-bold text-gradient mb-2">{stat.value}</div>
                   <div className="text-sm text-gray-400">{stat.label}</div>
                 </div>
@@ -162,7 +170,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto animate-stagger">
             {/* Feature 1 - Large */}
             <div className="md:col-span-2 lg:col-span-2 group">
-              <div className="h-full glass-dark rounded-3xl p-8 hover:scale-[1.02] transition-all">
+              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
                 <div className="flex items-start justify-between mb-6">
                   <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-xl">
                     <Cpu className="h-8 w-8 text-purple-400" />
@@ -176,7 +184,7 @@ export default function HomePage() {
                 </p>
                 <div className="grid grid-cols-3 gap-4">
                   {["PogChamp Detection", "Hype Moments", "Viewer Peaks"].map((feature) => (
-                    <div key={feature} className="glass-purple rounded-xl px-3 py-2 text-center text-sm">
+                    <div key={feature} className="glass-purple rounded-xl px-3 py-2 text-center text-sm hover:bg-purple-600/20 transition-all cursor-pointer">
                       {feature}
                     </div>
                   ))}
@@ -186,7 +194,7 @@ export default function HomePage() {
             
             {/* Feature 2 */}
             <div className="group">
-              <div className="h-full glass-dark rounded-3xl p-8 hover:scale-[1.02] transition-all">
+              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600/20 to-cyan-600/20 backdrop-blur-xl mb-6">
                   <Clock className="h-8 w-8 text-blue-400" />
                 </div>
@@ -200,7 +208,7 @@ export default function HomePage() {
             
             {/* Feature 3 */}
             <div className="group">
-              <div className="h-full glass-dark rounded-3xl p-8 hover:scale-[1.02] transition-all">
+              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-xl mb-6">
                   <CheckCircle className="h-8 w-8 text-green-400" />
                 </div>
@@ -214,7 +222,7 @@ export default function HomePage() {
             
             {/* Feature 4 */}
             <div className="group">
-              <div className="h-full glass-dark rounded-3xl p-8 hover:scale-[1.02] transition-all">
+              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-orange-600/20 to-red-600/20 backdrop-blur-xl mb-6">
                   <BarChart3 className="h-8 w-8 text-orange-400" />
                 </div>
@@ -228,7 +236,7 @@ export default function HomePage() {
             
             {/* Feature 5 */}
             <div className="group">
-              <div className="h-full glass-dark rounded-3xl p-8 hover:scale-[1.02] transition-all">
+              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-xl mb-6">
                   <Shield className="h-8 w-8 text-indigo-400" />
                 </div>
@@ -269,11 +277,11 @@ export default function HomePage() {
                   description: "Download formatted clips ready for TikTok, Reels, and Shorts"
                 }
               ].map((item, i) => (
-                <div key={i} className="flex gap-6 items-center animate-fade-up" style={{animationDelay: `${i * 100}ms`}}>
-                  <div className="flex-shrink-0 w-20 h-20 rounded-2xl glass-purple flex items-center justify-center">
+                <div key={i} className="flex gap-6 items-center animate-fade-up group" style={{animationDelay: `${i * 100}ms`}}>
+                  <div className="flex-shrink-0 w-20 h-20 rounded-2xl glass-purple flex items-center justify-center group-hover:scale-105 transition-transform">
                     <span className="text-2xl font-bold text-gradient">{item.step}</span>
                   </div>
-                  <div className="flex-grow glass-dark rounded-2xl p-6">
+                  <div className="flex-grow glass-subtle rounded-2xl p-6 group-hover:shadow-lg transition-all">
                     <h3 className="text-xl font-bold mb-2">{item.title}</h3>
                     <p className="text-gray-400">{item.description}</p>
                   </div>

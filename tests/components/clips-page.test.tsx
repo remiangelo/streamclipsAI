@@ -59,8 +59,7 @@ describe('ClipsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    const { trpc } = require('@/lib/trpc/client')
-    trpc.clip.list.useInfiniteQuery.mockReturnValue(defaultQueryReturn)
+    ;(trpc.clip.list.useInfiniteQuery as any).mockReturnValue(defaultQueryReturn)
   })
 
   describe('Rendering', () => {
@@ -68,7 +67,7 @@ describe('ClipsPage', () => {
       render(<ClipsPage />)
       
       expect(screen.getByText('My Clips')).toBeInTheDocument()
-      expect(screen.getByText('View and manage your generated clips')).toBeInTheDocument()
+      expect(screen.getByText('Manage and share your AI-generated highlights')).toBeInTheDocument()
     })
 
     it('should render search input', () => {
@@ -82,13 +81,13 @@ describe('ClipsPage', () => {
       render(<ClipsPage />)
       
       await waitFor(() => {
-        expect(screen.getByText('Test Clip')).toBeInTheDocument()
+        expect(screen.getByText('Epic Gaming Moment')).toBeInTheDocument()
         expect(screen.getByText('from Test VOD')).toBeInTheDocument()
       })
     })
 
     it('should render confidence badges correctly', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipsWithDifferentScores = {
         pages: [{
           clips: [
@@ -116,7 +115,7 @@ describe('ClipsPage', () => {
     })
 
     it('should format duration correctly', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipWithDuration = {
         pages: [{
           clips: [{
@@ -144,7 +143,7 @@ describe('ClipsPage', () => {
 
   describe('Loading States', () => {
     it('should show loading state', () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       trpc.clip.list.useInfiniteQuery.mockReturnValue({
         ...defaultQueryReturn,
         isLoading: true,
@@ -157,7 +156,7 @@ describe('ClipsPage', () => {
     })
 
     it('should show empty state when no clips', () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       trpc.clip.list.useInfiniteQuery.mockReturnValue({
         ...defaultQueryReturn,
         data: { pages: [{ clips: [], nextCursor: null }], pageParams: [] },
@@ -173,7 +172,7 @@ describe('ClipsPage', () => {
   describe('Search Functionality', () => {
     it('should filter clips based on search query', async () => {
       const user = userEvent.setup()
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const multipleClips = {
         pages: [{
           clips: [
@@ -226,14 +225,14 @@ describe('ClipsPage', () => {
       render(<ClipsPage />)
 
       await waitFor(() => {
-        expect(screen.getByText('Test Clip')).toBeInTheDocument()
+        expect(screen.getByText('Epic Gaming Moment')).toBeInTheDocument()
       })
 
       const searchInput = screen.getByPlaceholderText('Search clips...')
       await user.type(searchInput, 'TEST')
 
       await waitFor(() => {
-        expect(screen.getByText('Test Clip')).toBeInTheDocument()
+        expect(screen.getByText('Epic Gaming Moment')).toBeInTheDocument()
       })
     })
   })
@@ -248,7 +247,7 @@ describe('ClipsPage', () => {
     })
 
     it('should not show load more button when hasNextPage is false', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       trpc.clip.list.useInfiniteQuery.mockReturnValue({
         ...defaultQueryReturn,
         hasNextPage: false,
@@ -263,7 +262,7 @@ describe('ClipsPage', () => {
 
     it('should call fetchNextPage when load more is clicked', async () => {
       const fetchNextPage = vi.fn()
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       trpc.clip.list.useInfiniteQuery.mockReturnValue({
         ...defaultQueryReturn,
         fetchNextPage,
@@ -324,7 +323,7 @@ describe('ClipsPage', () => {
 
   describe('Keywords Display', () => {
     it('should display keywords when available', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipWithKeywords = {
         pages: [{
           clips: [{
@@ -353,7 +352,7 @@ describe('ClipsPage', () => {
     })
 
     it('should not render keywords section when no keywords', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipWithoutKeywords = {
         pages: [{
           clips: [{
@@ -383,7 +382,7 @@ describe('ClipsPage', () => {
 
   describe('Error Handling', () => {
     it('should handle query errors gracefully', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       trpc.clip.list.useInfiniteQuery.mockReturnValue({
         ...defaultQueryReturn,
         isError: true,
@@ -402,7 +401,7 @@ describe('ClipsPage', () => {
 
   describe('Image Handling', () => {
     it('should show clip thumbnail when available', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipWithThumbnail = {
         pages: [{
           clips: [{
@@ -428,7 +427,7 @@ describe('ClipsPage', () => {
     })
 
     it('should fallback to VOD thumbnail when clip thumbnail not available', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipWithVodThumbnail = {
         pages: [{
           clips: [{
@@ -458,7 +457,7 @@ describe('ClipsPage', () => {
     })
 
     it('should show placeholder when no thumbnail available', async () => {
-      const { trpc } = require('@/lib/trpc/client')
+      // Mock already set up via vi.mock
       const clipWithoutThumbnail = {
         pages: [{
           clips: [{

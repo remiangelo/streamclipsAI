@@ -63,12 +63,15 @@ export const clipRouter = createTRPCRouter({
     .input(
       z.object({
         vodId: z.string(),
-        title: z.string(),
+        title: z.string().trim().min(1).max(200),
         startTime: z.number(),
         endTime: z.number(),
         confidenceScore: z.number().min(0).max(1),
         highlightReason: z.string().optional(),
         keywords: z.array(z.string()).optional(),
+      }).refine((data) => data.endTime > data.startTime, {
+        message: "End time must be greater than start time",
+        path: ["endTime"],
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -93,6 +96,41 @@ export const clipRouter = createTRPCRouter({
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'VOD not found or unauthorized',
+        })
+      }
+
+      // Check for overlapping clips
+      const existingClips = await ctx.db.clip.findMany({
+        where: {
+          vodId: input.vodId,
+          userId: user.id,
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: input.startTime } },
+                { endTime: { gt: input.startTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { lt: input.endTime } },
+                { endTime: { gte: input.endTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: input.startTime } },
+                { endTime: { lte: input.endTime } },
+              ],
+            },
+          ],
+        },
+      })
+
+      if (existingClips.length > 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Overlapping clip detected',
         })
       }
 

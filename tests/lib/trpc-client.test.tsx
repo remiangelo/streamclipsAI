@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '../test-utils'
+import { render, screen, waitFor, act } from '../test-utils'
 import { QueryClient } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
@@ -52,15 +52,17 @@ function TestComponent({
 
   const mutation = {
     mutate: async (input: any) => {
-      try {
-        if (shouldError) {
-          throw new Error('Mutation failed')
+      await act(async () => {
+        try {
+          if (shouldError) {
+            throw new Error('Mutation failed')
+          }
+          const result = mockTRPCResponses.clip.create({ ...input, title: 'Test Clip' })
+          setMutationData(result)
+        } catch (error) {
+          setMutationError(error)
         }
-        const result = mockTRPCResponses.clip.create(input)
-        setMutationData(result)
-      } catch (error) {
-        setMutationError(error)
-      }
+      })
     },
     isLoading: false,
     error: mutationError,
@@ -102,7 +104,7 @@ function TestComponent({
     <div>
       {query.isLoading && <p>Loading...</p>}
       {query.isError && <p>Error: {query.error?.message}</p>}
-      {query.data && <p>User: {query.data.name}</p>}
+      {query.data && <p>User: {query.data.displayName}</p>}
     </div>
   )
 }
@@ -246,7 +248,10 @@ describe('tRPC Client', () => {
       )
 
       const createButton = screen.getByText('Create Clip')
-      createButton.click()
+      
+      await act(async () => {
+        createButton.click()
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Created: Test Clip')).toBeInTheDocument()
@@ -261,7 +266,10 @@ describe('tRPC Client', () => {
       )
 
       const createButton = screen.getByText('Create Clip')
-      createButton.click()
+      
+      await act(async () => {
+        createButton.click()
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Error: Mutation failed')).toBeInTheDocument()
@@ -324,15 +332,17 @@ describe('tRPC Client', () => {
         const [error, setError] = React.useState<any>(null)
         
         const handleSubmit = () => {
-          setError({
-            message: 'Validation failed',
-            data: {
-              zodError: {
-                fieldErrors: {
-                  title: ['Title is required'],
+          act(() => {
+            setError({
+              message: 'Validation failed',
+              data: {
+                zodError: {
+                  fieldErrors: {
+                    title: ['Title is required'],
+                  },
                 },
               },
-            },
+            })
           })
         }
 
@@ -358,7 +368,10 @@ describe('tRPC Client', () => {
       )
 
       const submitButton = screen.getByText('Submit')
-      submitButton.click()
+      
+      await act(async () => {
+        submitButton.click()
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Error: Validation failed')).toBeInTheDocument()
@@ -376,7 +389,7 @@ describe('tRPC Client', () => {
         return (
           <div>
             <p>Render count: {count}</p>
-            <p>User: {data.name}</p>
+            <p>User: {data.displayName}</p>
             <button onClick={() => setCount(count + 1)}>Re-render</button>
           </div>
         )
@@ -392,7 +405,10 @@ describe('tRPC Client', () => {
       expect(screen.getByText('User: Test User')).toBeInTheDocument()
 
       const reRenderButton = screen.getByText('Re-render')
-      reRenderButton.click()
+      
+      await act(async () => {
+        reRenderButton.click()
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Render count: 1')).toBeInTheDocument()
@@ -423,7 +439,9 @@ describe('tRPC Client', () => {
       expect(screen.getByText('Fetch count: 0')).toBeInTheDocument()
 
       // Simulate window focus
-      window.dispatchEvent(new Event('focus'))
+      await act(async () => {
+        window.dispatchEvent(new Event('focus'))
+      })
 
       await waitFor(() => {
         expect(screen.getByText('Fetch count: 1')).toBeInTheDocument()
@@ -472,10 +490,15 @@ describe('tRPC Client', () => {
       expect(screen.getByText('Item 2')).toBeInTheDocument()
 
       const addButton = screen.getByText('Add Item')
-      addButton.click()
+      
+      await act(async () => {
+        addButton.click()
+      })
 
       // Item should appear immediately (optimistic update)
-      expect(screen.getByText('New Item')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByText('New Item')).toBeInTheDocument()
+      })
       expect(addButton).toBeDisabled()
 
       await waitFor(() => {

@@ -384,6 +384,9 @@ describe('Middleware', () => {
         protect: vi.fn().mockRejectedValue(new Error('Database connection failed'))
       }
       
+      // Mock console.error to prevent test output noise
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      
       const clerkMiddleware = (fn: Function) => async (req: NextRequest) => {
         try {
           await fn(mockAuth, req)
@@ -409,6 +412,14 @@ describe('Middleware', () => {
       const response = await middleware(req)
       expect(response.status).toBe(503)
       expect(await response.text()).toBe('Service Unavailable')
+      
+      // Verify error was logged
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Middleware error:',
+        expect.any(Error)
+      )
+      
+      consoleErrorSpy.mockRestore()
     })
   })
 

@@ -7,34 +7,33 @@ describe('HomePage', () => {
   it('should render the hero section', () => {
     render(<HomePage />)
 
-    expect(screen.getByText(/Transform your streams/i)).toBeInTheDocument()
-    // Use getAllByText since there are multiple elements with this text
-    const viralTexts = screen.getAllByText(/into viral content/i)
-    expect(viralTexts.length).toBeGreaterThan(0)
+    expect(screen.getByText('Transform your')).toBeInTheDocument()
+    expect(screen.getByText('Twitch streams')).toBeInTheDocument()
+    expect(screen.getByText('into viral clips')).toBeInTheDocument()
   })
 
   it('should render the main CTA button', () => {
     render(<HomePage />)
 
-    const ctaButton = screen.getByText(/Start free trial/i)
-    expect(ctaButton).toBeInTheDocument()
+    const ctaButtons = screen.getAllByText(/Start free trial/i)
+    expect(ctaButtons.length).toBeGreaterThan(0)
   })
 
   it('should render feature cards', () => {
     render(<HomePage />)
 
-    expect(screen.getByText(/AI Chat Analysis/i)).toBeInTheDocument()
-    expect(screen.getByText(/Instant Processing/i)).toBeInTheDocument()
-    expect(screen.getByText(/Platform Optimized/i)).toBeInTheDocument()
+    expect(screen.getByText('Smart Chat Analysis')).toBeInTheDocument()
+    expect(screen.getByText('Lightning Fast')).toBeInTheDocument()
+    expect(screen.getByText('Platform Ready')).toBeInTheDocument()
   })
 
   it('should render statistics', () => {
     render(<HomePage />)
 
-    expect(screen.getByText(/10K\+/)).toBeInTheDocument()
-    expect(screen.getByText(/Clips Generated/i)).toBeInTheDocument()
-    expect(screen.getByText(/2M\+/)).toBeInTheDocument()
-    expect(screen.getByText(/Hours Analyzed/i)).toBeInTheDocument()
+    expect(screen.getByText('50K+')).toBeInTheDocument()
+    expect(screen.getByText('Clips Generated')).toBeInTheDocument()
+    expect(screen.getByText('10M+')).toBeInTheDocument()
+    expect(screen.getByText('Hours Analyzed')).toBeInTheDocument()
   })
 
   it('should render the footer', () => {

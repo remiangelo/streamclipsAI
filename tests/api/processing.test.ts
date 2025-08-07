@@ -57,6 +57,7 @@ describe('Processing Router', () => {
           vodId: 'vod_test123',
           jobType: 'chat_analysis',
           status: 'pending',
+          priority: 'medium', // starter tier gets medium priority
         },
       });
       
@@ -456,7 +457,10 @@ describe('Processing Router', () => {
       
       prismaMock.user.findUnique.mockResolvedValue(mockUser);
       prismaMock.vOD.findFirst.mockResolvedValue(mockVOD);
-      prismaMock.processingJob.count.mockResolvedValue(5); // 5 active jobs
+      prismaMock.clip.count.mockResolvedValue(50); // Within studio tier limits
+      prismaMock.processingJob.count
+        .mockResolvedValueOnce(4) // 4 active jobs (under limit of 5)
+        .mockResolvedValueOnce(10); // System has 10 total jobs
       prismaMock.processingJob.create.mockResolvedValue(mockJob);
       prismaMock.vOD.update.mockResolvedValue({
         ...mockVOD,
@@ -580,7 +584,10 @@ describe('Processing Router', () => {
       prismaMock.user.findUnique.mockResolvedValue(mockUser);
       prismaMock.vOD.findFirst.mockResolvedValue(mockVOD);
       prismaMock.clip.count.mockResolvedValue(0);
-      prismaMock.processingJob.count.mockResolvedValue(1000); // System overloaded
+      // Mock concurrent jobs check and system overload check separately
+      prismaMock.processingJob.count
+        .mockResolvedValueOnce(0) // User has 0 concurrent jobs
+        .mockResolvedValueOnce(1000); // System has 1000 total jobs
 
       const caller = processingRouter.createCaller(ctx);
       
