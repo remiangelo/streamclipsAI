@@ -1,15 +1,17 @@
 import { ProcessingJob, ProcessingJobStatus, ClipStatus } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { ChatAnalyzer } from '@/lib/chat-analyzer'
 import { TwitchAPIClient } from '@/lib/twitch-api'
 import { VideoProcessor } from '@/lib/video-processor'
 import { StorageManager } from '@/lib/storage'
 import { emailService } from '@/lib/email'
+import { config } from '@/lib/config'
 
 export interface JobResult {
   success: boolean
   error?: string
-  data?: any
+  data?: unknown
 }
 
 export interface JobProcessor {
@@ -36,9 +38,21 @@ export class JobQueue {
     type: string,
     vodId: string,
     userId: string,
-    parameters: any = {},
+    parameters: Prisma.InputJsonValue = {} as Prisma.InputJsonValue,
     priority: number = 0
   ): Promise<ProcessingJob> {
+    // Best-effort idempotency: prevent duplicate pending/processing jobs of same type for same VOD+user
+    const existing = await db.processingJob.findFirst({
+      where: {
+        type,
+        vodId,
+        userId,
+        status: { in: [ProcessingJobStatus.PENDING, ProcessingJobStatus.PROCESSING] },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+    if (existing) return existing
+
     return await db.processingJob.create({
       data: {
         type,
@@ -52,7 +66,7 @@ export class JobQueue {
     })
   }
 
-  async start(intervalMs = 5000) {
+  async start(intervalMs = config.jobs.pollIntervalMs || 5000) {
     if (this.processInterval) return
 
     this.processInterval = setInterval(() => {
@@ -76,10 +90,11 @@ export class JobQueue {
     this.isProcessing = true
     try {
       // Get next pending job
+      const maxAttempts = config.jobs.maxAttempts || 3
       const job = await db.processingJob.findFirst({
         where: {
           status: ProcessingJobStatus.PENDING,
-          attempts: { lt: 3 }
+          attempts: { lt: maxAttempts }
         },
         orderBy: [
           { priority: 'desc' },
@@ -90,6 +105,20 @@ export class JobQueue {
       if (!job) {
         this.isProcessing = false
         return
+      }
+
+      // Backoff before processing (exponential with jitter, no schema changes)
+      if (job.attempts > 0) {
+        const base = 5000 // 5s base
+        const backoff = base * Math.pow(2, job.attempts - 1)
+        const jitter = Math.floor(Math.random() * (base / 2))
+        const nextAllowed = new Date(job.updatedAt.getTime() + backoff + jitter)
+        const now = new Date()
+        if (nextAllowed > now) {
+          // Skip this cycle; let interval pick it up later
+          this.isProcessing = false
+          return
+        }
       }
 
       // Update job status
@@ -117,7 +146,7 @@ export class JobQueue {
           data: {
             status: ProcessingJobStatus.COMPLETED,
             completedAt: new Date(),
-            result: result.data
+            result: result.data as Prisma.InputJsonValue
           }
         })
       } else {
@@ -156,14 +185,29 @@ export class JobQueue {
 
 class AnalyzeVODProcessor implements JobProcessor {
   async process(job: ProcessingJob): Promise<JobResult> {
+    let currentVod: { id: string; userId: string; title: string; user?: { email: string | null; twitchUsername: string | null } } | null = null
     try {
+      if (!job.vodId) {
+        return { success: false, error: 'Missing vodId' }
+      }
+
       const vod = await db.vOD.findUnique({
-        where: { id: job.vodId },
+        where: { id: job.vodId! },
         include: { user: true }
       })
 
       if (!vod) {
         return { success: false, error: 'VOD not found' }
+      }
+
+      currentVod = {
+        id: vod.id,
+        userId: vod.userId,
+        title: vod.title,
+        user: {
+          email: vod.user?.email ?? null,
+          twitchUsername: vod.user?.twitchUsername ?? null,
+        },
       }
 
       // Initialize Twitch API client
@@ -186,13 +230,17 @@ class AnalyzeVODProcessor implements JobProcessor {
       // Create clip records for each highlight
       const clips = await Promise.all(
         highlights.map(async (highlight, index) => {
+          const startSec = Math.floor(highlight.timestamp / 1000)
+          const endSec = Math.floor(highlight.endTimestamp / 1000)
+          const duration = Math.max(1, endSec - startSec)
           return await db.clip.create({
             data: {
               vodId: vod.id,
               userId: vod.userId,
               title: `Highlight ${index + 1}: ${highlight.reason}`,
-              startTime: Math.floor(highlight.timestamp / 1000),
-              endTime: Math.floor(highlight.endTimestamp / 1000),
+              startTime: startSec,
+              endTime: endSec,
+              duration,
               confidenceScore: highlight.confidenceScore,
               status: ClipStatus.PENDING,
               metadata: {
@@ -222,10 +270,10 @@ class AnalyzeVODProcessor implements JobProcessor {
         where: { userId: vod.userId }
       })
       
-      if (vod.user.email && userPreferences?.emailProcessingComplete !== false) {
+      if (vod.user?.email && userPreferences?.emailProcessingComplete !== false) {
         await emailService.sendProcessingCompleteEmail({
           to: vod.user.email,
-          userName: vod.user.name || 'Streamer',
+          userName: vod.user.twitchUsername || 'Streamer',
           vodTitle: vod.title,
           clipCount: clips.length,
           vodId: vod.id,
@@ -267,20 +315,24 @@ class AnalyzeVODProcessor implements JobProcessor {
     } catch (error) {
       console.error('VOD analysis error:', error)
       
-      // Send failure email notification if preferences allow
-      if (vod && vod.user.email) {
-        const userPreferences = await db.userPreferences.findUnique({
-          where: { userId: vod.userId }
-        })
-        
-        if (userPreferences?.emailProcessingFailed !== false) {
-          await emailService.sendProcessingFailedEmail({
-            to: vod.user.email,
-            userName: vod.user.name || 'Streamer',
-            vodTitle: vod.title,
-            errorMessage: error instanceof Error ? error.message : 'Analysis failed',
-            vodId: vod.id,
+      // Send failure email notification if preferences allow and we know the VOD/user
+      if (currentVod?.user?.email) {
+        try {
+          const userPreferences = await db.userPreferences.findUnique({
+            where: { userId: currentVod.userId }
           })
+          
+          if (userPreferences?.emailProcessingFailed !== false) {
+            await emailService.sendProcessingFailedEmail({
+              to: currentVod.user.email,
+              userName: currentVod.user.twitchUsername || 'Streamer',
+              vodTitle: currentVod.title,
+              errorMessage: error instanceof Error ? error.message : 'Analysis failed',
+              vodId: currentVod.id,
+            })
+          }
+        } catch (e) {
+          console.error('Failed to send failure email:', e)
         }
       }
       

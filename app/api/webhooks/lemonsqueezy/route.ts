@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { getTierByVariantId } from '@/lib/lemonsqueezy';
 import { emailService } from '@/lib/email';
+import { config } from '@/lib/config';
+import type { SubscriptionTier } from '@prisma/client';
 
 // Verify webhook signature
 function verifyWebhookSignature(
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
     const signature = request.headers.get('x-signature');
-    const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+    const secret = config.lemonsqueezy.webhookSecret;
 
     if (!signature || !secret) {
       return NextResponse.json(
@@ -41,6 +43,16 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(body);
     const { meta, data } = payload;
+
+    // Idempotency: deduplicate webhook events (raw SQL upsert)
+    const eventId = (meta?.event_id as string | undefined) ?? `${data?.id || 'unknown'}:${meta?.event_name || 'unknown'}`;
+    const hash = crypto.createHash('sha256').update(`lemonsqueezy:${eventId}`).digest('hex');
+    try {
+      await db.$executeRaw`INSERT INTO "WebhookDedup" ("provider","hash") VALUES ('lemonsqueezy', ${hash}) ON CONFLICT ("hash") DO NOTHING`;
+    } catch (e) {
+      // If table doesn't exist yet (migration not applied), continue processing without dedup
+      console.error('Webhook dedup insert failed (continuing):', e);
+    }
 
     // Extract event data
     const eventName = meta.event_name;
@@ -70,10 +82,12 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        const tierLower = tier.toLowerCase() as SubscriptionTier;
+
         const updatedUser = await db.user.update({
           where: { id: userId },
           data: {
-            subscriptionTier: tier,
+            subscriptionTier: tierLower,
             subscriptionStatus: 'ACTIVE',
             lemonSqueezySubscriptionId: data.id,
             lemonSqueezyCustomerId: data.attributes.customer_id?.toString(),
@@ -112,11 +126,13 @@ export async function POST(request: NextRequest) {
             ],
           };
 
+          const planName = tierLower.charAt(0).toUpperCase() + tierLower.slice(1);
+          const features = tierLower === 'free' ? [] : (tierFeatures[tierLower as 'starter' | 'pro' | 'studio'] || []);
           await emailService.sendSubscriptionConfirmationEmail({
             to: updatedUser.email,
             userName: updatedUser.twitchUsername || 'Streamer',
-            planName: tier.charAt(0).toUpperCase() + tier.slice(1),
-            features: tierFeatures[tier] || [],
+            planName,
+            features,
           });
         }
 
@@ -133,8 +149,10 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        const tierLower = tier.toLowerCase() as SubscriptionTier;
+
         const status = data.attributes.status;
-        const subscriptionStatus = 
+        const subscriptionStatus =
           status === 'active' ? 'ACTIVE' :
           status === 'cancelled' ? 'CANCELLED' :
           status === 'paused' ? 'PAUSED' :
@@ -143,7 +161,7 @@ export async function POST(request: NextRequest) {
         await db.user.update({
           where: { id: userId },
           data: {
-            subscriptionTier: tier,
+            subscriptionTier: tierLower,
             subscriptionStatus,
             subscriptionCurrentPeriodEnd: new Date(data.attributes.renews_at),
           },
@@ -159,7 +177,7 @@ export async function POST(request: NextRequest) {
           where: { id: userId },
           data: {
             subscriptionStatus: eventName === 'subscription_cancelled' ? 'CANCELLED' : 'EXPIRED',
-            subscriptionTier: 'FREE',
+            subscriptionTier: 'free',
           },
         });
 

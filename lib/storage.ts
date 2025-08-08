@@ -1,8 +1,8 @@
 import { put, del, list } from '@vercel/blob'
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, ListObjectsV2CommandOutput } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { promises as fs } from 'fs'
-import path from 'path'
+import { config as appConfig } from '@/lib/config'
 
 export interface StorageConfig {
   provider: 'vercel' | 's3'
@@ -11,6 +11,9 @@ export interface StorageConfig {
     accessKeyId: string
     secretAccessKey: string
     bucketName: string
+    endpoint: string
+    publicBaseUrl?: string
+    cloudfrontDomain?: string
   }
 }
 
@@ -32,18 +35,28 @@ export class StorageManager {
   private s3Client?: S3Client
   private bucketName?: string
 
-  constructor(config?: StorageConfig) {
-    this.provider = config?.provider || process.env.STORAGE_PROVIDER || 'vercel'
-    
-    if (this.provider === 's3' && config?.s3Config) {
-      this.s3Client = new S3Client({
-        region: config.s3Config.region,
-        credentials: {
-          accessKeyId: config.s3Config.accessKeyId,
-          secretAccessKey: config.s3Config.secretAccessKey
-        }
-      })
-      this.bucketName = config.s3Config.bucketName
+  constructor(cfg?: StorageConfig) {
+    this.provider = (cfg?.provider || appConfig.storage.provider || process.env.STORAGE_PROVIDER || 'vercel') as string
+
+    if (this.provider === 's3') {
+      const region = cfg?.s3Config?.region ?? appConfig.storage.s3.region ?? process.env.S3_REGION
+      const accessKeyId = cfg?.s3Config?.accessKeyId ?? appConfig.storage.s3.accessKeyId ?? process.env.S3_ACCESS_KEY_ID
+      const secretAccessKey = cfg?.s3Config?.secretAccessKey ?? appConfig.storage.s3.secretAccessKey ?? process.env.S3_SECRET_ACCESS_KEY
+      const bucketName = cfg?.s3Config?.bucketName ?? appConfig.storage.s3.bucketName ?? process.env.S3_BUCKET_NAME
+      const endpoint = cfg?.s3Config?.endpoint ?? appConfig.storage.s3.endpoint ?? process.env.S3_ENDPOINT
+
+      if (region && accessKeyId && secretAccessKey && bucketName && endpoint) {
+        this.s3Client = new S3Client({
+          region,
+          endpoint,
+          forcePathStyle: true,
+          credentials: {
+            accessKeyId,
+            secretAccessKey,
+          },
+        })
+        this.bucketName = bucketName
+      }
     }
   }
 
@@ -126,11 +139,21 @@ export class StorageManager {
       
       await this.s3Client.send(command)
       
-      // Generate CloudFront URL if configured
-      const url = process.env.CLOUDFRONT_DOMAIN
-        ? `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`
-        : `https://${this.bucketName}.s3.amazonaws.com/${key}`
-      
+      // Build public URL (R2/CDN aware)
+      const publicBase = appConfig.storage.s3.publicBaseUrl
+      const cloudfront = appConfig.storage.s3.cloudfrontDomain
+      let url: string
+      if (publicBase) {
+        url = `${publicBase.replace(/\/$/, '')}/${key}`
+      } else if (cloudfront) {
+        url = `https://${cloudfront}/${key}`
+      } else if (appConfig.storage.s3.endpoint && appConfig.storage.s3.endpoint.includes('r2.cloudflarestorage.com')) {
+        const host = new URL(appConfig.storage.s3.endpoint).host
+        url = `https://${host}/${this.bucketName}/${key}`
+      } else {
+        url = `https://${this.bucketName}.s3.amazonaws.com/${key}`
+      }
+
       return {
         success: true,
         url,
@@ -227,11 +250,36 @@ export class StorageManager {
           totalSize: allBlobs.reduce((sum, blob) => sum + blob.size, 0),
           fileCount: allBlobs.length
         }
+      } else if (this.s3Client && this.bucketName) {
+        const prefixes = [`clips/${userId}/`, `thumbnails/${userId}/`]
+        let totalSize = 0
+        let fileCount = 0
+
+        for (const prefix of prefixes) {
+          let ContinuationToken: string | undefined = undefined
+          do {
+            const resp = await this.s3Client.send(
+              new ListObjectsV2Command({
+                Bucket: this.bucketName,
+                Prefix: prefix,
+                ContinuationToken,
+                MaxKeys: 1000,
+              })
+            ) as ListObjectsV2CommandOutput
+            const contents = resp.Contents || []
+            for (const obj of contents) {
+              totalSize += obj.Size ? Number(obj.Size) : 0
+              fileCount += 1
+            }
+            ContinuationToken = resp.IsTruncated ? resp.NextContinuationToken : undefined
+          } while (ContinuationToken)
+        }
+
+        return { totalSize, fileCount }
       }
-      
-      // For S3, you'd implement ListObjectsV2 command
+
       return { totalSize: 0, fileCount: 0 }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Get storage usage error:', error)
       return { totalSize: 0, fileCount: 0 }
     }

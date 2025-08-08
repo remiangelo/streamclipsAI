@@ -2,11 +2,19 @@ import { NextRequest } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   const user = await currentUser()
   if (!user) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  // Map Clerk user to internal DB user
+  const dbUser = await db.user.findUnique({
+    where: { clerkId: user.id }
+  })
+  if (!dbUser) {
     return new Response('Unauthorized', { status: 401 })
   }
 
@@ -31,7 +39,7 @@ export async function GET(request: NextRequest) {
       // Get user's recent jobs
       const jobs = await db.processingJob.findMany({
         where: {
-          userId: user.id,
+          userId: dbUser.id,
           OR: [
             { status: 'PROCESSING' },
             { status: 'PENDING' },
@@ -57,7 +65,7 @@ export async function GET(request: NextRequest) {
       // Get clip processing status
       const clips = await db.clip.findMany({
         where: {
-          userId: user.id,
+          userId: dbUser.id,
           status: { in: ['PROCESSING', 'PENDING'] }
         },
         include: {
@@ -106,10 +114,13 @@ export async function GET(request: NextRequest) {
   return new Response(stream.readable, { headers })
 }
 
-function calculateClipProgress(clip: any): number {
+type ClipProgressInput = { status: string }
+
+function calculateClipProgress(clip: ClipProgressInput): number {
   switch (clip.status) {
     case 'PENDING':
       return 0
+    // These two are UI-only transitional states (not in DB enum) but kept for compatibility
     case 'ANALYZING':
       return 25
     case 'PROCESSING':

@@ -211,3 +211,12 @@ model UserPreferences {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+// Idempotency/dedup table for external webhooks (e.g., LemonSqueezy)
+model WebhookDedup {
+  id        String   @id @default(cuid())
+  provider  String
+  hash      String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
