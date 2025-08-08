@@ -3,22 +3,13 @@ import { Button } from "@/components/ui/button";
 import { SignInButton, SignUpButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import { ArrowRight, Sparkles, Zap, BarChart3, Clock, CheckCircle, Play, Star, Shield, Cpu } from "lucide-react";
 import { AnimatedBackground } from "@/components/animated-background";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function HomePage() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-      {/* Twitch logo collage background */}
-      <div className="twitch-bg" />
-      
-      {/* Animated particles background */}
+      {/* Subtle animated background (hero-only flair) */}
       <AnimatedBackground />
-      
-      {/* Animated gradient overlay */}
-      <div className="gradient-bg absolute inset-0" />
-      
-      {/* Floating orbs */}
-      <div className="absolute top-20 left-20 w-96 h-96 bg-purple-600 rounded-full blur-[128px] opacity-20 animate-float" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-pink-600 rounded-full blur-[128px] opacity-20 animate-float" style={{animationDelay: '2s'}} />
       
       {/* Header */}
       <header className="relative z-20 container mx-auto px-4 py-6">
@@ -65,6 +56,8 @@ export default function HomePage() {
                 </Button>
               </Link>
             </SignedIn>
+
+            <ThemeToggle />
           </div>
         </nav>
       </header>
@@ -114,22 +107,22 @@ export default function HomePage() {
 
             {/* Hero Video/Image Preview */}
             <div className="relative mx-auto max-w-4xl animate-fade-up" style={{animationDelay: '0.3s'}}>
-              <div className="glass-subtle rounded-2xl p-2 card-hover">
+              <div className="glass-subtle rounded-2xl p-2 hover-card">
                 <div className="aspect-video bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-0 animated-grid opacity-20" />
+                  <div className="absolute inset-0 bg-grid-white/[0.02] opacity-20" />
                   <Play className="h-16 w-16 text-white/50 relative z-10" />
                 </div>
               </div>
               
               {/* Floating UI elements */}
-              <div className="absolute -top-4 -left-4 glass-purple px-4 py-2 rounded-xl animate-float">
+              <div className="absolute -top-4 -left-4 glass-purple px-4 py-2 rounded-xl">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
                   <span className="text-sm">AI Processing</span>
                 </div>
               </div>
               
-              <div className="absolute -bottom-4 -right-4 glass-purple px-4 py-2 rounded-xl animate-float" style={{animationDelay: '1s'}}>
+              <div className="absolute -bottom-4 -right-4 glass-purple px-4 py-2 rounded-xl" style={{animationDelay: '1s'}}>
                 <div className="flex items-center gap-2">
                   <Zap className="h-4 w-4 text-yellow-500" />
                   <span className="text-sm">2.5K viewers spike</span>
@@ -149,7 +142,7 @@ export default function HomePage() {
                 { value: "95%", label: "Accuracy Rate", delay: "100ms" },
                 { value: "< 2min", label: "Processing Time", delay: "150ms" }
               ].map((stat, i) => (
-                <div key={i} className="glass-subtle rounded-2xl p-6 text-center card-hover animate-fade-up" style={{animationDelay: stat.delay}}>
+                <div key={i} className="glass-subtle rounded-2xl p-6 text-center hover-card animate-fade-up" style={{animationDelay: stat.delay}}>
                   <div className="text-3xl font-bold text-gradient mb-2">{stat.value}</div>
                   <div className="text-sm text-gray-400">{stat.label}</div>
                 </div>
@@ -170,7 +163,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto animate-stagger">
             {/* Feature 1 - Large */}
             <div className="md:col-span-2 lg:col-span-2 group">
-              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
+              <div className="h-full glass-subtle rounded-3xl p-8 hover-card">
                 <div className="flex items-start justify-between mb-6">
                   <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-xl">
                     <Cpu className="h-8 w-8 text-purple-400" />
@@ -194,7 +187,7 @@ export default function HomePage() {
             
             {/* Feature 2 */}
             <div className="group">
-              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
+              <div className="h-full glass-subtle rounded-3xl p-8 hover-card">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-600/20 to-cyan-600/20 backdrop-blur-xl mb-6">
                   <Clock className="h-8 w-8 text-blue-400" />
                 </div>
@@ -208,7 +201,7 @@ export default function HomePage() {
             
             {/* Feature 3 */}
             <div className="group">
-              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
+              <div className="h-full glass-subtle rounded-3xl p-8 hover-card">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-green-600/20 to-emerald-600/20 backdrop-blur-xl mb-6">
                   <CheckCircle className="h-8 w-8 text-green-400" />
                 </div>
@@ -222,7 +215,7 @@ export default function HomePage() {
             
             {/* Feature 4 */}
             <div className="group">
-              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
+              <div className="h-full glass-subtle rounded-3xl p-8 hover-card">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-orange-600/20 to-red-600/20 backdrop-blur-xl mb-6">
                   <BarChart3 className="h-8 w-8 text-orange-400" />
                 </div>
@@ -236,7 +229,7 @@ export default function HomePage() {
             
             {/* Feature 5 */}
             <div className="group">
-              <div className="h-full glass-subtle rounded-3xl p-8 card-hover">
+              <div className="h-full glass-subtle rounded-3xl p-8 hover-card">
                 <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-xl mb-6">
                   <Shield className="h-8 w-8 text-indigo-400" />
                 </div>

@@ -387,15 +387,36 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Vercel-style focus */
-*:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
-}
-
 /* Modern form inputs */
 input, textarea, select {
   transition: all 0.2s ease;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Explicitly disable decorative/looping animations */
+  .text-gradient,
+  .gradient-border,
+  .animated-grid,
+  .subtle-shimmer,
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-shimmer,
+  .animate-slide-in,
+  .animate-fade-in,
+  .animate-fade-up,
+  .animate-fade-down,
+  .animate-scale-up,
+  .animate-stagger > * {
+    animation: none !important;
+  }
 }
 
 input:focus, textarea:focus, select:focus {
