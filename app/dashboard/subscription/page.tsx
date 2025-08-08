@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/trpc/client';
+import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
@@ -11,45 +11,48 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type Tier = 'FREE' | 'STARTER' | 'PRO' | 'STUDIO';
+type Plan = { id: Tier; name: string; price: number; current?: boolean; features: string[] };
+
 export default function SubscriptionPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<Tier | null>(null);
 
-  const { data: status, isLoading: statusLoading } = api.subscription.getStatus.useQuery();
-  const { data: plans, isLoading: plansLoading } = api.subscription.getPlans.useQuery();
-  const { data: portalUrl } = api.subscription.getPortalUrl.useQuery();
+  const { data: status, isLoading: statusLoading } = trpc.subscription.getStatus.useQuery();
+  const { data: plans, isLoading: plansLoading } = trpc.subscription.getPlans.useQuery();
+  const { data: portalUrl } = trpc.subscription.getPortalUrl.useQuery();
 
-  const createCheckout = api.subscription.createCheckout.useMutation({
-    onSuccess: (data) => {
+  const createCheckout = trpc.subscription.createCheckout.useMutation({
+    onSuccess: (data: { url: string }) => {
       window.location.href = data.url;
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
       setIsLoading(null);
     },
   });
 
-  const cancelSubscription = api.subscription.cancel.useMutation({
+  const cancelSubscription = trpc.subscription.cancel.useMutation({
     onSuccess: () => {
       toast.success('Subscription cancelled successfully');
       router.refresh();
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     },
   });
 
-  const resumeSubscription = api.subscription.resume.useMutation({
+  const resumeSubscription = trpc.subscription.resume.useMutation({
     onSuccess: () => {
       toast.success('Subscription resumed successfully');
       router.refresh();
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     },
   });
 
-  const handleSubscribe = (tier: 'STARTER' | 'PRO' | 'STUDIO') => {
+  const handleSubscribe = (tier: Exclude<Tier, 'FREE'>) => {
     setIsLoading(tier);
     createCheckout.mutate({ tier });
   };
@@ -67,8 +70,9 @@ export default function SubscriptionPage() {
     );
   }
 
-  const currentTier = status?.tier || 'FREE';
+  const currentTier: Tier = (status?.tier as Tier) || 'FREE';
   const subscriptionStatus = status?.status || 'INACTIVE';
+  const tierOrder: Record<Tier, number> = { FREE: 0, STARTER: 1, PRO: 2, STUDIO: 3 };
 
   return (
     <div className="space-y-6">
@@ -173,7 +177,9 @@ export default function SubscriptionPage() {
 
       {/* Pricing Plans */}
       <div className="grid gap-6 md:grid-cols-3">
-        {plans?.filter(plan => plan.id !== 'FREE').map((plan) => (
+        {(plans as Plan[] | undefined)?.
+          filter((plan): plan is Plan & { id: Exclude<Tier, 'FREE'> } => plan.id !== 'FREE').
+          map((plan) => (
           <Card 
             key={plan.id} 
             className={plan.current ? 'border-primary' : ''}
@@ -203,11 +209,11 @@ export default function SubscriptionPage() {
               ) : (
                 <Button
                   className="w-full"
-                  onClick={() => handleSubscribe(plan.id as any)}
+                  onClick={() => handleSubscribe(plan.id)}
                   disabled={isLoading !== null}
                 >
                   {isLoading === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {currentTier !== 'FREE' && currentTier < plan.id ? 'Upgrade' : 'Subscribe'}
+                  {currentTier !== 'FREE' && tierOrder[currentTier] < tierOrder[plan.id] ? 'Upgrade' : 'Subscribe'}
                 </Button>
               )}
             </CardFooter>
@@ -221,7 +227,7 @@ export default function SubscriptionPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Free Tier</AlertTitle>
           <AlertDescription>
-            You're currently on the free tier with 5 clips per month and 5GB storage. 
+            You&apos;re currently on the free tier with 5 clips per month and 5GB storage. 
             Upgrade to unlock more features and higher limits.
           </AlertDescription>
         </Alert>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { api } from '@/lib/trpc/client';
+import { trpc } from '@/lib/trpc/client';
 import { 
   RefreshCw, 
   Clock, 
@@ -34,33 +34,46 @@ import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+type StatusFilter = 'all' | JobStatus;
+type JobItem = {
+  id: string;
+  type: string;
+  user: { email: string; twitchUsername?: string | null };
+  vod?: { title?: string | null } | null;
+  status: JobStatus;
+  processingTimeMs: number | null;
+  createdAt: string | Date;
+  error?: string | null;
+};
+
 export default function AdminJobsPage() {
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const { data, isLoading, refetch } = api.admin.getJobs.useQuery({
+  const { data, isLoading, refetch } = trpc.admin.getJobs.useQuery({
     page,
-    status: statusFilter === 'all' ? undefined : statusFilter as any,
+    status: statusFilter === 'all' ? undefined : statusFilter,
   });
 
-  const retryJob = api.admin.retryJob.useMutation({
+  const retryJob = trpc.admin.retryJob.useMutation({
     onSuccess: () => {
       toast.success('Job queued for retry');
       refetch();
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     },
   });
 
-  const statusIcons = {
+  const statusIcons: Record<JobStatus, ReactNode> = {
     PENDING: <Clock className="h-4 w-4 text-yellow-500" />,
     PROCESSING: <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />,
     COMPLETED: <CheckCircle className="h-4 w-4 text-green-500" />,
     FAILED: <XCircle className="h-4 w-4 text-red-500" />,
   };
 
-  const statusColors = {
+  const statusColors: Record<JobStatus, string> = {
     PENDING: 'bg-yellow-500',
     PROCESSING: 'bg-blue-500',
     COMPLETED: 'bg-green-500',
@@ -77,6 +90,11 @@ export default function AdminJobsPage() {
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
   };
+  
+  // Derive typed collections to avoid implicit any in array callbacks
+  const jobs: JobItem[] = ((data?.jobs ?? []) as unknown as JobItem[]);
+  const hasFailedJobs = jobs.some((j) => j.status === 'FAILED');
+  const failedJobs = jobs.filter((j) => j.status === 'FAILED' && j.error);
 
   return (
     <div className="space-y-6">
@@ -92,7 +110,7 @@ export default function AdminJobsPage() {
           <div className="flex items-center justify-between">
             <CardTitle>Jobs Queue</CardTitle>
             <div className="flex items-center gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
@@ -137,7 +155,7 @@ export default function AdminJobsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.jobs.map((job) => (
+                  {jobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-mono text-xs">
                         {job.id.slice(0, 8)}...
@@ -164,9 +182,9 @@ export default function AdminJobsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {statusIcons[job.status]}
+                          {statusIcons[job.status as JobStatus]}
                           <Badge 
-                            className={`${statusColors[job.status]} text-white`}
+                            className={`${statusColors[job.status as JobStatus]} text-white`}
                           >
                             {job.status}
                           </Badge>
@@ -230,7 +248,7 @@ export default function AdminJobsPage() {
       </Card>
 
       {/* Job Error Details */}
-      {data?.jobs.some(j => j.status === 'FAILED') && (
+      {hasFailedJobs && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -240,9 +258,7 @@ export default function AdminJobsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {data.jobs
-                .filter(j => j.status === 'FAILED' && j.error)
-                .map(job => (
+              {failedJobs.map((job) => (
                   <div key={job.id} className="p-3 bg-red-950/20 rounded-lg border border-red-900/50">
                     <div className="font-mono text-xs text-muted-foreground mb-1">
                       {job.id}

@@ -4,26 +4,34 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { api } from '@/lib/trpc/client';
-import { BarChart3, TrendingUp, Users, Clock, Trophy } from 'lucide-react';
+import { trpc } from '@/lib/trpc/client';
+import { BarChart3, TrendingUp, Clock, Trophy } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+
+type DailyStat = { date: string | Date; clips: number; users: number };
+type TopUser = { id: string; email: string; twitchUsername?: string | null; _count: { clips: number } };
+type ProcessingStats = { avgTimeMs: number; minTimeMs: number; maxTimeMs: number };
 
 export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30);
-  const { data, isLoading } = api.admin.getAnalytics.useQuery({ days });
+  const { data, isLoading } = trpc.admin.getAnalytics.useQuery({ days });
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Analytics</h1>
         <div className="grid gap-6">
-          {[...Array(3)].map((_, i) => (
+          {Array.from({ length: 3 }, (_, i) => (
             <Skeleton key={i} className="h-64" />
           ))}
         </div>
       </div>
     );
   }
+
+  const dailyStats: DailyStat[] = (data?.dailyStats ?? []) as DailyStat[];
+  const topUsers: TopUser[] = (data?.topUsers ?? []) as TopUser[];
+  const processingStats: ProcessingStats = (data?.processingStats ?? { avgTimeMs: 0, minTimeMs: 0, maxTimeMs: 0 }) as ProcessingStats;
 
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
@@ -40,7 +48,7 @@ export default function AdminAnalyticsPage() {
             Platform usage and performance metrics
           </p>
         </div>
-        <Select value={days.toString()} onValueChange={(v) => setDays(parseInt(v))}>
+        <Select value={days.toString()} onValueChange={(v: string) => setDays(parseInt(v, 10))}>
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
@@ -62,7 +70,7 @@ export default function AdminAnalyticsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {data?.dailyStats.map((stat) => (
+            {dailyStats.map((stat) => (
               <div key={stat.date.toString()} className="flex items-center gap-4">
                 <div className="text-sm text-muted-foreground w-24">
                   {new Date(stat.date).toLocaleDateString('en-US', { 
@@ -112,7 +120,7 @@ export default function AdminAnalyticsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {data?.topUsers.map((user, index) => (
+            {topUsers.map((user, index) => (
               <div key={user.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-sm font-medium">
@@ -148,7 +156,7 @@ export default function AdminAnalyticsPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="text-center p-4 bg-gray-900 rounded-lg">
               <div className="text-2xl font-bold text-green-500">
-                {formatTime(data?.processingStats.avgTimeMs || 0)}
+                {formatTime(processingStats.avgTimeMs || 0)}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
                 Average Time
@@ -156,7 +164,7 @@ export default function AdminAnalyticsPage() {
             </div>
             <div className="text-center p-4 bg-gray-900 rounded-lg">
               <div className="text-2xl font-bold text-blue-500">
-                {formatTime(data?.processingStats.minTimeMs || 0)}
+                {formatTime(processingStats.minTimeMs || 0)}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
                 Fastest
@@ -164,7 +172,7 @@ export default function AdminAnalyticsPage() {
             </div>
             <div className="text-center p-4 bg-gray-900 rounded-lg">
               <div className="text-2xl font-bold text-orange-500">
-                {formatTime(data?.processingStats.maxTimeMs || 0)}
+                {formatTime(processingStats.maxTimeMs || 0)}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
                 Slowest
@@ -190,13 +198,13 @@ export default function AdminAnalyticsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Total</span>
                   <span className="font-medium">
-                    {data?.dailyStats.reduce((sum, stat) => sum + stat.clips, 0) || 0}
+                    {dailyStats.reduce((sum, stat) => sum + stat.clips, 0) || 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Daily Average</span>
                   <span className="font-medium">
-                    {Math.round((data?.dailyStats.reduce((sum, stat) => sum + stat.clips, 0) || 0) / days)}
+                    {Math.round((dailyStats.reduce((sum, stat) => sum + stat.clips, 0) || 0) / days)}
                   </span>
                 </div>
               </div>
@@ -208,13 +216,13 @@ export default function AdminAnalyticsPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">New Users</span>
                   <span className="font-medium">
-                    {data?.dailyStats.reduce((sum, stat) => sum + stat.users, 0) || 0}
+                    {dailyStats.reduce((sum, stat) => sum + stat.users, 0) || 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Daily Average</span>
                   <span className="font-medium">
-                    {Math.round((data?.dailyStats.reduce((sum, stat) => sum + stat.users, 0) || 0) / days)}
+                    {Math.round((dailyStats.reduce((sum, stat) => sum + stat.users, 0) || 0) / days)}
                   </span>
                 </div>
               </div>

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { api } from '@/lib/trpc/client';
+import { trpc } from '@/lib/trpc/client';
 import {
   Database,
   HardDrive,
@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminHealthPage() {
-  const { data: health, isLoading, refetch } = api.admin.getSystemHealth.useQuery();
+  const { data: health, isLoading, refetch } = trpc.admin.getSystemHealth.useQuery();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -57,7 +57,7 @@ export default function AdminHealthPage() {
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">System Health</h1>
         <div className="grid gap-6 md:grid-cols-2">
-          {[...Array(4)].map((_, i) => (
+          {Array.from({ length: 4 }, (_, i) => (
             <Skeleton key={i} className="h-40" />
           ))}
         </div>
@@ -128,7 +128,7 @@ export default function AdminHealthPage() {
               <HardDrive className="h-5 w-5" />
               Storage Usage
             </div>
-            {getStatusIcon(health?.storage.status || 'unknown')}
+            {getStatusIcon(health?.storage?.status || 'unknown')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -137,16 +137,16 @@ export default function AdminHealthPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Used Storage</span>
                 <span className="text-sm text-muted-foreground">
-                  {health?.storage.usedGB.toFixed(2)} GB / 1000 GB
+                  {(health?.storage?.usedGB ?? 0).toFixed(2)} GB / 1000 GB
                 </span>
               </div>
               <Progress 
-                value={(health?.storage.usedGB || 0) / 10} 
+                value={((health?.storage?.usedGB ?? 0) / 10)} 
                 className="h-2"
               />
             </div>
             
-            {health?.storage.status === 'warning' && (
+            {health?.storage?.status === 'warning' && (
               <div className="flex items-center gap-2 p-3 bg-yellow-950/20 rounded-lg border border-yellow-900/50">
                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 <span className="text-sm text-yellow-400">
@@ -166,7 +166,7 @@ export default function AdminHealthPage() {
               <Activity className="h-5 w-5" />
               Error Rate (Today)
             </div>
-            {getStatusIcon(health?.errorRate.status || 'unknown')}
+            {getStatusIcon(health?.errorRate?.status || 'unknown')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -175,16 +175,16 @@ export default function AdminHealthPage() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Failed Jobs</span>
                 <span className="text-sm text-muted-foreground">
-                  {health?.errorRate.percentage.toFixed(1)}%
+                  {(health?.errorRate?.percentage ?? 0).toFixed(1)}%
                 </span>
               </div>
               <Progress 
-                value={health?.errorRate.percentage || 0} 
+                value={health?.errorRate?.percentage || 0} 
                 className="h-2"
               />
             </div>
             
-            {health?.errorRate.status === 'warning' && (
+            {health?.errorRate?.status === 'warning' && (
               <div className="flex items-center gap-2 p-3 bg-yellow-950/20 rounded-lg border border-yellow-900/50">
                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 <span className="text-sm text-yellow-400">
@@ -193,7 +193,7 @@ export default function AdminHealthPage() {
               </div>
             )}
             
-            {health?.errorRate.status === 'critical' && (
+            {health?.errorRate?.status === 'critical' && (
               <div className="flex items-center gap-2 p-3 bg-red-950/20 rounded-lg border border-red-900/50">
                 <XCircle className="h-4 w-4 text-red-500" />
                 <span className="text-sm text-red-400">

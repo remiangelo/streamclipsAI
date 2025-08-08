@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api } from '@/lib/trpc/client';
+import { trpc } from '@/lib/trpc/client';
 import {
   Users,
   DollarSign,
@@ -16,15 +16,17 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
+type SubscriptionTierStat = { subscriptionTier: string; _count: number };
+
 export default function AdminOverviewPage() {
-  const { data: overview, isLoading } = api.admin.getOverview.useQuery();
+  const { data: overview, isLoading } = trpc.admin.getOverview.useQuery();
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Admin Overview</h1>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(8)].map((_, i) => (
+          {Array.from({ length: 8 }, (_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
@@ -63,7 +65,7 @@ export default function AdminOverviewPage() {
     },
   ];
 
-  const subscriptionData = overview?.subscriptions || [];
+  const subscriptionData: SubscriptionTierStat[] = (overview?.subscriptions ?? []) as SubscriptionTierStat[];
   const totalSubscribers = subscriptionData.reduce((sum, tier) => sum + tier._count, 0);
 
   return (
@@ -71,7 +73,7 @@ export default function AdminOverviewPage() {
       <div>
         <h1 className="text-3xl font-bold">Admin Overview</h1>
         <p className="text-muted-foreground">
-          Monitor your platform's performance and health
+          Monitor your platform&apos;s performance and health
         </p>
       </div>
 

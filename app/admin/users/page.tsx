@@ -26,30 +26,43 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { api } from '@/lib/trpc/client';
+import { trpc } from '@/lib/trpc/client';
 import { Search, MoreVertical, Shield, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type UserRole = 'user' | 'admin';
+type UserTier = 'free' | 'starter' | 'pro' | 'studio';
+type TierFilter = UserTier | 'all';
+type UserItem = {
+  id: string;
+  email: string;
+  twitchUsername?: string | null;
+  subscriptionTier: UserTier;
+  role: UserRole;
+  _count: { clips: number; vods: number };
+  createdAt: string | Date;
+};
+
 export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [tierFilter, setTierFilter] = useState<string>('all');
+  const [tierFilter, setTierFilter] = useState<TierFilter>('all');
 
-  const { data, isLoading, refetch } = api.admin.getUsers.useQuery({
+  const { data, isLoading, refetch } = trpc.admin.getUsers.useQuery({
     page,
     search,
-    tier: tierFilter === 'all' ? undefined : tierFilter as any,
+    tier: tierFilter === 'all' ? undefined : tierFilter,
   });
 
-  const updateUser = api.admin.updateUser.useMutation({
+  const updateUser = trpc.admin.updateUser.useMutation({
     onSuccess: () => {
       toast.success('User updated successfully');
       refetch();
     },
-    onError: (error) => {
-      toast.error(error.message);
+    onError: (error: unknown) => {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     },
   });
 
@@ -59,23 +72,25 @@ export default function AdminUsersPage() {
     refetch();
   };
 
-  const handleRoleChange = (userId: string, role: 'user' | 'admin') => {
+  const handleRoleChange = (userId: string, role: UserRole) => {
     updateUser.mutate({ userId, data: { role } });
   };
 
-  const handleTierChange = (userId: string, tier: string) => {
+  const handleTierChange = (userId: string, tier: UserTier) => {
     updateUser.mutate({ 
       userId, 
-      data: { subscriptionTier: tier as any } 
+      data: { subscriptionTier: tier } 
     });
   };
 
-  const tierColors = {
+  const tierColors: Record<UserTier, string> = {
     free: 'bg-gray-500',
     starter: 'bg-blue-500',
     pro: 'bg-purple-500',
     studio: 'bg-orange-500',
   };
+
+  const users: UserItem[] = ((data?.users ?? []) as unknown as UserItem[]);
 
   return (
     <div className="space-y-6">
@@ -102,7 +117,7 @@ export default function AdminUsersPage() {
                   <Search className="h-4 w-4" />
                 </Button>
               </form>
-              <Select value={tierFilter} onValueChange={setTierFilter}>
+              <Select value={tierFilter} onValueChange={(v) => setTierFilter(v as TierFilter)}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -138,7 +153,7 @@ export default function AdminUsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.users.map((user) => (
+                  {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell>
                         <div>

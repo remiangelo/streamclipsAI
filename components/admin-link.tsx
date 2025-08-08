@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { Shield } from 'lucide-react';
-import { api } from '@/lib/trpc/client';
+import { trpc } from '@/lib/trpc/client';
 
 export function AdminLink() {
-  const { data: stats } = api.user.stats.useQuery();
+  const { data: stats } = trpc.user.stats.useQuery();
   
   // Only show for admin users
   if (!stats || stats.role !== 'admin') {
